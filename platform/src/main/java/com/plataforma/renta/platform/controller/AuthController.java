@@ -68,7 +68,22 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email ya registrado"));
         }
 
-        UserRol rol = UserRol.valueOf(request.rol().toUpperCase());
+        String rolStr = request.rol();
+        if (rolStr == null || rolStr.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Rol es obligatorio: debe ser CLIENTE o PROPIETARIO"));
+        }
+
+        UserRol rol;
+        try {
+            rol = UserRol.valueOf(rolStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Rol inválido: solo se permiten CLIENTE o PROPIETARIO"));
+        }
+
+        if (rol == UserRol.ADMIN) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No se permite registrar usuarios con rol ADMIN"));
+        }
+
         Usuario usuario = new Usuario(
                 java.util.UUID.randomUUID(),
                 Email.of(request.email()),

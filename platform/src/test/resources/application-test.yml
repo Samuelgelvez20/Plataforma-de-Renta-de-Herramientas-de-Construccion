@@ -1,0 +1,3 @@
+jwt:
+  secret: "clave-secreta-de-prueba-de-32-bytes-minimo-para-testing"
+  expiration-ms: 86400000

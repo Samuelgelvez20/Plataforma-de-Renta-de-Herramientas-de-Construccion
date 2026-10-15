@@ -17,13 +17,26 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
+    private static final int MIN_SECRET_KEY_LENGTH_BYTES = 32; // 256 bits for HMAC-SHA256
+
     private final SecretKey secretKey;
     private final long expirationMs;
 
     public JwtUtil(@Value("${jwt.secret}") String secret,
                    @Value("${jwt.expiration-ms}") long expirationMs) {
+        validateSecret(secret);
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;
+    }
+
+    private void validateSecret(String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET no está configurado. Defina la variable de entorno JWT_SECRET con una clave de al menos 256 bits (32 bytes).");
+        }
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < MIN_SECRET_KEY_LENGTH_BYTES) {
+            throw new IllegalStateException("JWT_SECRET debe tener al menos " + MIN_SECRET_KEY_LENGTH_BYTES + " bytes (256 bits) para HMAC-SHA256. Longitud actual: " + secretBytes.length + " bytes.");
+        }
     }
 
     public String generateToken(UserDetails userDetails) {

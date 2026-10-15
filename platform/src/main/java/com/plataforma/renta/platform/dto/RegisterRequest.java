@@ -1,12 +1,16 @@
 package com.plataforma.renta.platform.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+
 public record RegisterRequest(
-        String email,
-        String password,
-        String nombre,
-        String apellido,
+        @NotBlank String email,
+        @NotBlank String password,
+        @NotBlank String nombre,
+        @NotBlank String apellido,
         String telefono,
-        String rol, // ADMIN, PROPIETARIO, CLIENTE
+        @NotNull @Pattern(regexp = "CLIENTE|PROPIETARIO", message = "Rol debe ser CLIENTE o PROPIETARIO") String rol,
         // Campos para PROPIETARIO
         String razonSocial,
         String nit,
