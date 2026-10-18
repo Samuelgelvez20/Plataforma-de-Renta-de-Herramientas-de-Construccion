@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -28,6 +29,7 @@ import org.testcontainers.utility.DockerImageName;
  * PostgreSQL real y que la seguridad por defecto protege los endpoints.</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
 class AplicacionContextoTest {
 
     private static final DockerImageName IMAGEN_POSTGRES = DockerImageName.parse("postgres:16-alpine");
@@ -61,6 +63,7 @@ class AplicacionContextoTest {
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
         registry.add("spring.flyway.enabled", () -> "false");
+        registry.add("jwt.secret", () -> "clave-secreta-de-prueba-de-32-bytes-minimo-para-testing");
     }
 
     @Autowired
@@ -83,14 +86,19 @@ class AplicacionContextoTest {
     }
 
     @Test
-    @DisplayName("Los endpoints quedan protegidos por la seguridad por defecto hasta definir SecurityConfig (Sprint 1)")
+    @DisplayName("Los endpoints protegidos requieren autenticacion y devuelven 401 o 403 sin token")
     void losEndpointsEstanProtegidosPorDefecto() throws Exception {
         int puerto = environment.getRequiredProperty("local.server.port", Integer.class);
         HttpResponse<String> respuesta = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + puerto + "/api/v1/reservas")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        // Spring Security devuelve 403 (Forbidden) o 401 (Unauthorized) para acceso no autenticado
+        assertThat(respuesta.statusCode()).isIn(401, 403);
+
+        // Documentacion OpenAPI publica
+        HttpResponse<String> docsRespuesta = HttpClient.newHttpClient().send(
                 HttpRequest.newBuilder(URI.create("http://localhost:" + puerto + "/v3/api-docs")).GET().build(),
                 HttpResponse.BodyHandlers.ofString());
-        // Spring Security devuelve 403 (Forbidden) para acceso no autenticado a endpoints protegidos
-        // 401 (Unauthorized) se usa cuando hay challenge de autenticación (ej. WWW-Authenticate header)
-        assertThat(respuesta.statusCode()).isIn(401, 403);
+        assertThat(docsRespuesta.statusCode()).isEqualTo(200);
     }
 }

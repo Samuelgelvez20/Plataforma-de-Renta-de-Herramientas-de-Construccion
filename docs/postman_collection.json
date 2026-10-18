@@ -1,0 +1,703 @@
+{
+  "info": {
+    "name": "Plataforma de Renta de Herramientas y Equipos - API Spring Boot",
+    "_postman_id": "c7b5e43a-7952-4742-9908-112233445566",
+    "description": "Colección Postman completa para la API REST de la Plataforma de Renta de Equipos de Construcción (Spring Boot 4 / Java 21). Incluye flujos de autenticación JWT, reservas, disponibilidad de stock, pasarela de pago simulada con idempotencia, facturación tributaria con PDF y reembolsos con nota de crédito.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token_cliente",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_propietario",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_admin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoria_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "herramienta_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reserva_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pago_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "factura_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reembolso_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Autenticación & Usuarios",
+      "item": [
+        {
+          "name": "Registrar Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cliente.postman@obras.com\",\n  \"password\": \"Password123!\",\n  \"nombre\": \"Juan\",\n  \"apellido\": \"P\\u00e9rez\",\n  \"rol\": \"CLIENTE\",\n  \"telefono\": \"3001234567\",\n  \"direccionEntregaDefault\": \"Carrera 15 # 85-30, Bogot\\u00e1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registrar Propietario (NIT validado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"propietario.postman@equipos.com\",\n  \"password\": \"Password123!\",\n  \"nombre\": \"Roberto\",\n  \"apellido\": \"G\\u00f3mez\",\n  \"rol\": \"PROPIETARIO\",\n  \"telefono\": \"3109876543\",\n  \"razonSocial\": \"Maquinarias Andinas S.A.S.\",\n  \"nit\": \"900123456-8\",\n  \"direccionFiscal\": \"Zona Industrial Calle 13 # 68-40, Bogot\\u00e1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login Cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.token) { pm.collectionVariables.set(\"token_cliente\", res.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cliente.postman@obras.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login Propietario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.token) { pm.collectionVariables.set(\"token_propietario\", res.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"propietario.postman@equipos.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Perfil de Usuario Autenticado (/auth/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_cliente}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Catálogo & Disponibilidad",
+      "item": [
+        {
+          "name": "Listar Categorías",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.length > 0) { pm.collectionVariables.set(\"categoria_id\", res[0].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/categorias",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "categorias"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Herramientas del Catálogo",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/herramientas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "herramientas"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Herramienta (Propietario)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.id) { pm.collectionVariables.set(\"herramienta_id\", res.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_propietario}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Generador El\\u00e9ctrico Di\\u00e9sel 10kVA\",\n  \"descripcion\": \"Generador trif\\u00e1sico de alto rendimiento para faena pesada\",\n  \"marca\": \"Caterpillar\",\n  \"modelo\": \"DE11E3\",\n  \"precioDia\": 180000.0,\n  \"cantidadTotal\": 4,\n  \"categoriaId\": \"{{categoria_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/herramientas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "herramientas"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar Disponibilidad de Herramienta",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/herramientas/{{herramienta_id}}/disponibilidad?fechaInicio=2026-11-01&fechaFin=2026-11-10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "herramientas",
+                "{{herramienta_id}}",
+                "disponibilidad"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2026-11-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2026-11-10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Reservas & Operaciones",
+      "item": [
+        {
+          "name": "Crear Reserva (Cliente)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.id) { pm.collectionVariables.set(\"reserva_id\", res.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_cliente}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"herramientaId\": \"{{herramienta_id}}\",\n  \"cantidad\": 2,\n  \"fechaInicio\": \"2026-11-01\",\n  \"fechaFin\": \"2026-11-06\",\n  \"notasCliente\": \"Entrega requerida en obra a primera hora\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reservas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Aceptar Reserva (Propietario)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_propietario}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reservas/{{reserva_id}}/aceptar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reservas",
+                "{{reserva_id}}",
+                "aceptar"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Entregar Equipo (Propietario)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_propietario}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reservas/{{reserva_id}}/entregar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reservas",
+                "{{reserva_id}}",
+                "entregar"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Devolver Equipo con Inspección (Propietario)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_propietario}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"presentaDanos\": false,\n  \"descripcionDano\": \"\",\n  \"costoReparacion\": 0.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reservas/{{reserva_id}}/devolver",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reservas",
+                "{{reserva_id}}",
+                "devolver"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Pagos & Facturas",
+      "item": [
+        {
+          "name": "Procesar Pago Simulado con Idempotencia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.pago) { pm.collectionVariables.set(\"pago_id\", res.pago.id); }",
+                  "if (res.factura) { pm.collectionVariables.set(\"factura_id\", res.factura.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_cliente}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservaId\": \"{{reserva_id}}\",\n  \"metodo\": \"TARJETA_CREDITO\",\n  \"claveIdempotencia\": \"idemp-postman-sample-001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pagos/procesar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pagos",
+                "procesar"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Repetir Pago (Prueba de Idempotencia)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_cliente}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservaId\": \"{{reserva_id}}\",\n  \"metodo\": \"TARJETA_CREDITO\",\n  \"claveIdempotencia\": \"idemp-postman-sample-001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pagos/procesar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pagos",
+                "procesar"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Facturas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_cliente}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/facturas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "facturas"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Descargar Factura en PDF (Binario)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_cliente}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/facturas/{{factura_id}}/pdf",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "facturas",
+                "{{factura_id}}",
+                "pdf"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Reembolsos & Notas de Crédito",
+      "item": [
+        {
+          "name": "Solicitar Reembolso (Cliente)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.id) { pm.collectionVariables.set(\"reembolso_id\", res.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_cliente}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservaId\": \"{{reserva_id}}\",\n  \"pagoId\": \"{{pago_id}}\",\n  \"montoConIva\": 100000.0,\n  \"motivo\": \"Ajuste de d\\u00edas por lluvia extrema\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reembolsos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reembolsos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resolver Reembolso (Propietario o Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_propietario}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"aprobar\": true,\n  \"resolucion\": \"Reembolso aprobado y compensado mediante Nota de Cr\\u00e9dito\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reembolsos/{{reembolso_id}}/resolver",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reembolsos",
+                "{{reembolso_id}}",
+                "resolver"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Administración & Métricas",
+      "item": [
+        {
+          "name": "Dashboard de Métricas (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reportes/dashboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reportes",
+                "dashboard"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Usuarios del Sistema (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/usuarios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "usuarios"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

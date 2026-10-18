@@ -5,11 +5,19 @@ import com.plataforma.renta.domain.model.Factura;
 import com.plataforma.renta.domain.model.FacturaTipo;
 import com.plataforma.renta.domain.model.Pago;
 import com.plataforma.renta.domain.model.Reserva;
+import com.plataforma.renta.domain.model.Herramienta;
 import com.plataforma.renta.domain.port.out.ConfiguracionFiscalRepository;
 import com.plataforma.renta.domain.port.out.FacturaRepository;
+import com.plataforma.renta.domain.port.out.FacturaPdfPort;
+import java.util.List;
+import com.plataforma.renta.domain.port.out.HerramientaRepository;
+import com.plataforma.renta.domain.port.out.JsonSerializer;
 import com.plataforma.renta.domain.port.out.PagoRepository;
 import com.plataforma.renta.domain.port.out.PropietarioRepository;
 import com.plataforma.renta.domain.port.out.ClienteRepository;
+import com.plataforma.renta.domain.port.out.ReservaRepository;
+import com.plataforma.renta.domain.model.UserRol;
+import java.util.Optional;
 import com.plataforma.renta.domain.value.Dinero;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -17,6 +25,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -27,17 +37,29 @@ public class FacturaService {
     private final PropietarioRepository propietarioRepository;
     private final ClienteRepository clienteRepository;
     private final PagoRepository pagoRepository;
+    private final HerramientaRepository herramientaRepository;
+    private final JsonSerializer jsonSerializer;
+    private final FacturaPdfPort facturaPdfPort;
+    private final ReservaRepository reservaRepository;
 
     public FacturaService(FacturaRepository facturaRepository,
                           ConfiguracionFiscalRepository configuracionFiscalRepository,
                           PropietarioRepository propietarioRepository,
                           ClienteRepository clienteRepository,
-                          PagoRepository pagoRepository) {
-        this.facturaRepository = facturaRepository;
-        this.configuracionFiscalRepository = configuracionFiscalRepository;
-        this.propietarioRepository = propietarioRepository;
-        this.clienteRepository = clienteRepository;
-        this.pagoRepository = pagoRepository;
+                          PagoRepository pagoRepository,
+                          HerramientaRepository herramientaRepository,
+                          JsonSerializer jsonSerializer,
+                          FacturaPdfPort facturaPdfPort,
+                          ReservaRepository reservaRepository) {
+        this.facturaRepository = java.util.Objects.requireNonNull(facturaRepository, "facturaRepository es requerido");
+        this.configuracionFiscalRepository = java.util.Objects.requireNonNull(configuracionFiscalRepository, "configuracionFiscalRepository es requerido");
+        this.propietarioRepository = java.util.Objects.requireNonNull(propietarioRepository, "propietarioRepository es requerido");
+        this.clienteRepository = java.util.Objects.requireNonNull(clienteRepository, "clienteRepository es requerido");
+        this.pagoRepository = java.util.Objects.requireNonNull(pagoRepository, "pagoRepository es requerido");
+        this.herramientaRepository = java.util.Objects.requireNonNull(herramientaRepository, "herramientaRepository es requerido");
+        this.jsonSerializer = java.util.Objects.requireNonNull(jsonSerializer, "jsonSerializer es requerido");
+        this.facturaPdfPort = java.util.Objects.requireNonNull(facturaPdfPort, "facturaPdfPort es requerido");
+        this.reservaRepository = java.util.Objects.requireNonNull(reservaRepository, "reservaRepository es requerido");
     }
 
     @Transactional
@@ -48,13 +70,16 @@ public class FacturaService {
         }
 
         // Obtener datos fiscales del propietario (a través de la herramienta del primer detalle)
+        if (reserva.getDetalles() == null || reserva.getDetalles().isEmpty()) {
+            throw new IllegalStateException("La reserva no contiene detalles para emitir factura");
+        }
         var herramientaId = reserva.getDetalles().get(0).getHerramientaId();
-        var propietarioId = propietarioRepository.findHerramientaIdsByPropietarioId(herramientaId)
-                .stream().findFirst()
-                .orElseThrow(() -> new EntidadNoEncontradaException("Propietario no encontrado"));
+        var herramienta = herramientaRepository.findById(herramientaId)
+                .orElseThrow(() -> new EntidadNoEncontradaException("Herramienta no encontrada: " + herramientaId));
+        var propietarioId = herramienta.getPropietarioId();
         
         var propietario = propietarioRepository.findById(propietarioId)
-                .orElseThrow(() -> new EntidadNoEncontradaException("Propietario no encontrado"));
+                .orElseThrow(() -> new EntidadNoEncontradaException("Propietario no encontrado: " + propietarioId));
         
         var cliente = clienteRepository.findByUsuarioId(reserva.getClienteId())
                 .orElseThrow(() -> new EntidadNoEncontradaException("Cliente no encontrado"));
@@ -122,13 +147,104 @@ public class FacturaService {
     }
 
     private String toJsonEmisor(com.plataforma.renta.domain.model.Propietario p) {
-        return String.format("{\"nit\":\"%s\",\"razon_social\":\"%s\",\"direccion\":\"%s\",\"regimen\":\"%s\",\"municipio\":\"%s\",\"departamento\":\"%s\"}",
-                p.getNit().getValor(), p.getRazonSocial(), p.getDireccionFiscal(), p.getRegimen(), p.getMunicipio(), p.getDepartamento());
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("nit", p.getNit() != null ? p.getNit().getValor() : "");
+        map.put("razon_social", p.getRazonSocial());
+        map.put("direccion", p.getDireccionFiscal());
+        map.put("regimen", p.getRegimen());
+        map.put("municipio", p.getMunicipio());
+        map.put("departamento", p.getDepartamento());
+        return jsonSerializer.toJson(map);
     }
 
     private String toJsonReceptor(com.plataforma.renta.domain.model.Cliente c) {
-        return String.format("{\"nit\":\"%s\",\"razon_social\":\"%s\",\"direccion\":\"%s\",\"email\":\"%s\"}",
-                c.getDatosFacturacion(), c.getDatosFacturacion(), 
-                c.getDireccionEntregaDefault(), c.getEmail());
+        String datosFact = c.getDatosFacturacion();
+        if (datosFact != null && !datosFact.isBlank() && jsonSerializer.isValidJson(datosFact)) {
+            return datosFact.trim();
+        }
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("nombre", c.getNombre());
+        map.put("apellido", c.getApellido());
+        map.put("email", c.getEmail() != null ? c.getEmail().getValor() : "");
+        map.put("direccion", c.getDireccionEntregaDefault());
+        return jsonSerializer.toJson(map);
     }
+
+    public List<Factura> listarTodas() {
+        return facturaRepository.findAll();
+    }
+
+    public Factura obtenerPorId(UUID id) {
+        return facturaRepository.findById(id)
+                .orElseThrow(() -> new EntidadNoEncontradaException("Factura no encontrada: " + id));
+    }
+
+    public List<Factura> listarPorReserva(UUID reservaId) {
+        return facturaRepository.findByReservaId(reservaId);
+    }
+
+    public byte[] generarPdf(UUID facturaId) {
+        Factura factura = obtenerPorId(facturaId);
+        return facturaPdfPort.generarPdf(factura);
+    }
+
+
+    public List<Factura> listarPorUsuario(UUID usuarioId, UserRol rol) {
+        if (rol == UserRol.ADMIN) {
+            return facturaRepository.findAll();
+        }
+
+        if (rol == UserRol.CLIENTE) {
+            List<UUID> misReservas = reservaRepository.findByClienteId(usuarioId).stream()
+                    .map(Reserva::getId)
+                    .toList();
+            return facturaRepository.findAll().stream()
+                    .filter(f -> misReservas.contains(f.getReservaId()))
+                    .toList();
+        }
+
+        if (rol == UserRol.PROPIETARIO) {
+            List<UUID> misHerramientas = herramientaRepository.findByPropietarioId(usuarioId).stream()
+                    .map(Herramienta::getId)
+                    .toList();
+            List<UUID> reservasDeMisHerramientas = reservaRepository.findAll().stream()
+                    .filter(r -> r.getDetalles() != null && r.getDetalles().stream().anyMatch(d -> misHerramientas.contains(d.getHerramientaId())))
+                    .map(Reserva::getId)
+                    .toList();
+            return facturaRepository.findAll().stream()
+                    .filter(f -> reservasDeMisHerramientas.contains(f.getReservaId()))
+                    .toList();
+        }
+
+        return List.of();
+    }
+
+    public boolean tieneAcceso(UUID facturaId, UUID usuarioId, UserRol rol) {
+        if (rol == UserRol.ADMIN) {
+            return true;
+        }
+
+        Factura factura = facturaRepository.findById(facturaId)
+                .orElseThrow(() -> new EntidadNoEncontradaException("Factura no encontrada: " + facturaId));
+
+        Optional<Reserva> reservaOpt = reservaRepository.findById(factura.getReservaId());
+        if (reservaOpt.isEmpty()) {
+            return false;
+        }
+
+        Reserva reserva = reservaOpt.get();
+        if (rol == UserRol.CLIENTE) {
+            return usuarioId.equals(reserva.getClienteId());
+        }
+
+        if (rol == UserRol.PROPIETARIO) {
+            List<UUID> misHerramientas = herramientaRepository.findByPropietarioId(usuarioId).stream()
+                    .map(Herramienta::getId)
+                    .toList();
+            return reserva.getDetalles() != null && reserva.getDetalles().stream().anyMatch(d -> misHerramientas.contains(d.getHerramientaId()));
+        }
+
+        return false;
+    }
+
 }

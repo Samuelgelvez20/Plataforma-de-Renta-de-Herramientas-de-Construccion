@@ -62,6 +62,11 @@ public final class Pago {
         this.estado = PagoEstado.FALLIDO;
     }
 
+    public void cambiarEstado(PagoEstado nuevoEstado) {
+        if (estado != PagoEstado.PENDIENTE) throw new IllegalStateException("Solo PENDIENTE puede cambiar de estado");
+        this.estado = nuevoEstado;
+    }
+
     public boolean esCompletado() { return estado == PagoEstado.COMPLETADO; }
     public boolean esReembolso() { return estado == PagoEstado.REEMBOLSADO; }
     public boolean tienePagoOriginal() { return pagoOriginalId != null; }

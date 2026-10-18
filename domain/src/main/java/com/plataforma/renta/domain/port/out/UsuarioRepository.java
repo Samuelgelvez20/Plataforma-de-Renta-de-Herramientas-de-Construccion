@@ -18,4 +18,6 @@ public interface UsuarioRepository {
     Optional<Usuario> findByIdForUpdate(UUID id);
 
     List<Usuario> findByRol(UserRol rol);
+
+    List<Usuario> findAll();
 }

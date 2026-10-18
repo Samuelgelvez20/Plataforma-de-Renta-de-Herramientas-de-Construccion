@@ -3,9 +3,9 @@ package com.plataforma.renta.infrastructure.persistence.adapter;
 import com.plataforma.renta.domain.model.Pago;
 import com.plataforma.renta.domain.port.out.PagoRepository;
 import com.plataforma.renta.infrastructure.persistence.entity.PagoEntity;
-import com.plataforma.renta.infrastructure.persistence.entity.PagoEstado;
 import com.plataforma.renta.infrastructure.persistence.mapper.PagoMapper;
 import com.plataforma.renta.infrastructure.persistence.repository.SpringDataPagoRepository;
+import com.plataforma.renta.infrastructure.persistence.repository.SpringDataReservaRepository;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -18,17 +18,27 @@ import java.util.stream.Collectors;
 public class PagoRepositoryAdapter implements PagoRepository {
 
     private final SpringDataPagoRepository springRepo;
+    private final SpringDataReservaRepository reservaRepo;
     private final PagoMapper mapper;
 
-    public PagoRepositoryAdapter(SpringDataPagoRepository springRepo, PagoMapper mapper) {
+    public PagoRepositoryAdapter(SpringDataPagoRepository springRepo,
+                                 SpringDataReservaRepository reservaRepo,
+                                 PagoMapper mapper) {
         this.springRepo = springRepo;
+        this.reservaRepo = reservaRepo;
         this.mapper = mapper;
     }
 
     @Override
     public Pago save(Pago pago) {
         PagoEntity entity = mapper.toEntity(pago);
-        return mapper.toDomain(springRepo.save(entity));
+        if (pago.getReservaId() != null) {
+            entity.setReserva(reservaRepo.getReferenceById(pago.getReservaId()));
+        }
+        if (pago.getPagoOriginalId() != null) {
+            entity.setPagoOriginal(springRepo.getReferenceById(pago.getPagoOriginalId()));
+        }
+        return mapper.toDomain(springRepo.saveAndFlush(entity));
     }
 
     @Override
@@ -73,5 +83,22 @@ public class PagoRepositoryAdapter implements PagoRepository {
     @Override
     public boolean existsCompletadoByReservaId(UUID reservaId) {
         return springRepo.existsCompletadoByReservaId(reservaId);
+    }
+
+    @Override
+    public boolean existsByPagoOriginalIdAndEstado(UUID pagoOriginalId, com.plataforma.renta.domain.model.PagoEstado estado) {
+        return springRepo.existsByPagoOriginalIdAndEstado(pagoOriginalId, com.plataforma.renta.infrastructure.persistence.entity.PagoEstado.valueOf(estado.name()));
+    }
+
+    @Override
+    public boolean existsByReservaId(UUID reservaId) {
+        return springRepo.existsByReservaId(reservaId);
+    }
+
+    @Override
+    public List<Pago> findAll() {
+        return springRepo.findAll().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
     }
 }

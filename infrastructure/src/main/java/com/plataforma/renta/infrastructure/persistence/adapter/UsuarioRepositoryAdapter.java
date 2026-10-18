@@ -52,4 +52,11 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Usuario> findAll() {
+        return springRepo.findAll().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
 }

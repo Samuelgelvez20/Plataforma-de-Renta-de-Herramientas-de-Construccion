@@ -20,7 +20,7 @@ public class ReservaEntity {
     private ClienteEntity cliente;
 
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcType(org.hibernate.dialect.type.PostgreSQLEnumJdbcType.class)
+    @org.hibernate.annotations.JdbcType(com.plataforma.renta.infrastructure.persistence.type.CustomPostgreSQLEnumJdbcType.class)
     @Column(name = "estado", nullable = false, columnDefinition = "reserva_estado")
     private ReservaEstado estado;
 
@@ -51,13 +51,13 @@ public class ReservaEntity {
     @Column(name = "actualizado_en", nullable = false)
     private Instant actualizadoEn;
 
-    @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "reserva", fetch = FetchType.LAZY)
     private List<DetalleReservaEntity> detalles = new ArrayList<>();
 
-    @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "reserva", fetch = FetchType.LAZY)
     private List<PagoEntity> pagos = new ArrayList<>();
 
-    @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "reserva", fetch = FetchType.LAZY)
     private List<FacturaEntity> facturas = new ArrayList<>();
 
     protected ReservaEntity() {}

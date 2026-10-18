@@ -40,7 +40,7 @@ public class HerramientaEntity {
     private Integer cantidadTotal;
 
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcType(org.hibernate.dialect.type.PostgreSQLEnumJdbcType.class)
+    @org.hibernate.annotations.JdbcType(com.plataforma.renta.infrastructure.persistence.type.CustomPostgreSQLEnumJdbcType.class)
     @Column(name = "estado_publicacion", nullable = false, columnDefinition = "herramienta_pub_estado")
     private HerramientaPubEstado estadoPublicacion;
 

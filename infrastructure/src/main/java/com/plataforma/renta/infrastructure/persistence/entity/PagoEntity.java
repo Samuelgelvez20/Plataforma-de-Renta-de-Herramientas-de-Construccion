@@ -22,7 +22,7 @@ public class PagoEntity {
     private PagoEntity pagoOriginal;
 
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcType(org.hibernate.dialect.type.PostgreSQLEnumJdbcType.class)
+    @org.hibernate.annotations.JdbcType(com.plataforma.renta.infrastructure.persistence.type.CustomPostgreSQLEnumJdbcType.class)
     @Column(name = "estado", nullable = false, columnDefinition = "pago_estado")
     private PagoEstado estado;
 
@@ -35,6 +35,7 @@ public class PagoEntity {
     @Column(name = "monto", nullable = false, precision = 14, scale = 2)
     private BigDecimal monto;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.CHAR)
     @Column(name = "moneda", nullable = false, length = 3)
     private String moneda;
 

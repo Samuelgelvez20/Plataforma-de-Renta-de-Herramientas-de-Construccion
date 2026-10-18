@@ -2,15 +2,9 @@ package com.plataforma.renta.infrastructure.persistence.mapper;
 
 import com.plataforma.renta.domain.model.Factura;
 import com.plataforma.renta.domain.model.FacturaTipo;
-import com.plataforma.renta.domain.model.Pago;
 import com.plataforma.renta.domain.value.Dinero;
 import com.plataforma.renta.infrastructure.persistence.entity.FacturaEntity;
-import com.plataforma.renta.infrastructure.persistence.entity.PagoEntity;
 import org.springframework.stereotype.Component;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
 
 @Component
 public class FacturaMapper {
@@ -19,7 +13,7 @@ public class FacturaMapper {
         if (entity == null) return null;
         return new Factura(
                 entity.getId(),
-                entity.getReserva().getId(),
+                entity.getReserva() != null ? entity.getReserva().getId() : null,
                 entity.getNumeroFactura(),
                 toDomainTipo(entity.getTipo()),
                 entity.getFacturaOriginal() != null ? entity.getFacturaOriginal().getId() : null,
@@ -39,13 +33,13 @@ public class FacturaMapper {
 
     public FacturaEntity toEntity(Factura domain) {
         if (domain == null) return null;
-        FacturaEntity entity = new FacturaEntity(
+        return new FacturaEntity(
                 domain.getId(),
-                null, // reserva se setea aparte
+                null,
                 domain.getNumeroFactura(),
                 toEntityTipo(domain.getTipo()),
-                domain.getFacturaOriginalId() != null ? new FacturaEntity() : null,
-                domain.getPagoReembolsoId() != null ? new PagoEntity() : null,
+                null,
+                null,
                 domain.getSubtotal().getMonto(),
                 domain.getIva().getMonto(),
                 domain.getTotal().getMonto(),
@@ -57,7 +51,6 @@ public class FacturaMapper {
                 domain.getFechaEmision(),
                 domain.getCreadoEn()
         );
-        return entity;
     }
 
     private FacturaTipo toDomainTipo(com.plataforma.renta.infrastructure.persistence.entity.FacturaTipo tipo) {

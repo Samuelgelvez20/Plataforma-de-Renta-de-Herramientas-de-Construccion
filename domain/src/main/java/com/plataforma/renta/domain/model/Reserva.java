@@ -37,6 +37,22 @@ public final class Reserva {
         this.actualizadoEn = Instant.now();
     }
 
+    public static Reserva reconstruir(
+            UUID id, UUID clienteId, ReservaEstado estado,
+            LocalDate fechaInicio, LocalDate fechaFin,
+            Instant fechaCreacion, Instant fechaConfirmacion,
+            Instant fechaExpiracionPendiente, Instant fechaCancelacion,
+            String motivoCancelacion, UUID canceladoPorUsuarioId,
+            Instant actualizadoEn) {
+        Reserva r = new Reserva(id, clienteId, estado, fechaInicio, fechaFin, fechaCreacion, fechaExpiracionPendiente);
+        r.fechaConfirmacion = fechaConfirmacion;
+        r.fechaCancelacion = fechaCancelacion;
+        r.motivoCancelacion = motivoCancelacion;
+        r.canceladoPorUsuarioId = canceladoPorUsuarioId;
+        r.actualizadoEn = actualizadoEn != null ? actualizadoEn : Instant.now();
+        return r;
+    }
+
     public void agregarDetalle(DetalleReserva detalle) {
         if (detalle.getReservaId() != null && !detalle.getReservaId().equals(this.id)) {
             throw new IllegalArgumentException("El detalle pertenece a otra reserva");

@@ -19,7 +19,7 @@ public class UsuarioEntity {
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcType(org.hibernate.dialect.type.PostgreSQLEnumJdbcType.class)
+    @org.hibernate.annotations.JdbcType(com.plataforma.renta.infrastructure.persistence.type.CustomPostgreSQLEnumJdbcType.class)
     @Column(name = "rol", nullable = false, columnDefinition = "user_rol")
     private UserRol rol;
 

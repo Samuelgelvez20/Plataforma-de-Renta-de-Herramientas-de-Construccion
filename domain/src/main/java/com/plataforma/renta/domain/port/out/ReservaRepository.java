@@ -23,4 +23,6 @@ public interface ReservaRepository {
     List<Reserva> findPendientesVencidas(Instant ahora);
 
     boolean existsById(UUID id);
+
+    List<Reserva> findAll();
 }

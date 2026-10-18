@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -38,9 +39,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.plataforma.renta.infrastructure.persistence.entity.UserRol;
+import com.plataforma.renta.domain.model.UserRol;
 
 @SpringBootTest(classes = PlataformaRentaApplication.class)
+@ActiveProfiles("test")
 @Testcontainers
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class ConcurrenciaReservaSimpleTest {
@@ -71,6 +73,7 @@ class ConcurrenciaReservaSimpleTest {
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
         registry.add("spring.flyway.enabled", () -> "false");
+        registry.add("jwt.secret", () -> "clave-secreta-de-prueba-de-32-bytes-minimo-para-testing");
     }
 
     @Autowired
@@ -118,7 +121,7 @@ class ConcurrenciaReservaSimpleTest {
         usuario.setPasswordHash("hash");
         usuario.setApellido("Cliente");
         usuario.setNombre("Test");
-        usuario.setRol(UserRol.CLIENTE);
+        usuario.setRol(com.plataforma.renta.infrastructure.persistence.entity.UserRol.CLIENTE);
         usuario = usuarioRepository.save(usuario);
 
         ClienteEntity cliente = new ClienteEntity(usuario);
@@ -157,13 +160,14 @@ class ConcurrenciaReservaSimpleTest {
                     fin.countDown();
                     return;
                 }
-                try {
+try {
+                    UUID clienteRolId = clienteUsuarioId; // Usamos el ID del cliente con rol CLIENTE
                     reservaService.crearReserva(new com.plataforma.renta.application.command.CrearReservaCommand(
-                            clienteUsuarioId,
+                            clienteRolId,
                             LocalDate.now().plusDays(1),
                             LocalDate.now().plusDays(2),
                             List.of(new com.plataforma.renta.application.command.CrearReservaCommand.DetalleCommand(herramientaId, 1))
-                    ));
+                    ), clienteRolId, UserRol.CLIENTE);
                     exitos.incrementAndGet();
                 } catch (Exception e) {
                     errores.add(e);

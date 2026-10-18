@@ -29,7 +29,7 @@ public class ReporteDanoEntity {
     private String descripcion;
 
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcType(org.hibernate.dialect.type.PostgreSQLEnumJdbcType.class)
+    @org.hibernate.annotations.JdbcType(com.plataforma.renta.infrastructure.persistence.type.CustomPostgreSQLEnumJdbcType.class)
     @Column(name = "severidad", nullable = false, columnDefinition = "dano_severidad")
     private DanoSeveridad severidad;
 

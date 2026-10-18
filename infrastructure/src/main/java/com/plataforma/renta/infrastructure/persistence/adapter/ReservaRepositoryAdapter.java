@@ -6,16 +6,15 @@ import com.plataforma.renta.domain.port.out.ReservaRepository;
 import com.plataforma.renta.infrastructure.persistence.entity.ClienteEntity;
 import com.plataforma.renta.infrastructure.persistence.entity.DetalleReservaEntity;
 import com.plataforma.renta.infrastructure.persistence.entity.ReservaEntity;
-import com.plataforma.renta.infrastructure.persistence.entity.ReservaEstado;
 import com.plataforma.renta.infrastructure.persistence.mapper.DetalleReservaMapper;
 import com.plataforma.renta.infrastructure.persistence.mapper.ReservaMapper;
 import com.plataforma.renta.infrastructure.persistence.repository.SpringDataClienteRepository;
 import com.plataforma.renta.infrastructure.persistence.repository.SpringDataDetalleReservaRepository;
+import com.plataforma.renta.infrastructure.persistence.repository.SpringDataHerramientaRepository;
 import com.plataforma.renta.infrastructure.persistence.repository.SpringDataReservaRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,14 +26,14 @@ public class ReservaRepositoryAdapter implements ReservaRepository {
     private final SpringDataReservaRepository springRepo;
     private final SpringDataDetalleReservaRepository detalleRepo;
     private final SpringDataClienteRepository clienteRepo;
-    private final com.plataforma.renta.infrastructure.persistence.repository.SpringDataHerramientaRepository herramientaRepo;
+    private final SpringDataHerramientaRepository herramientaRepo;
     private final ReservaMapper reservaMapper;
     private final DetalleReservaMapper detalleMapper;
 
     public ReservaRepositoryAdapter(SpringDataReservaRepository springRepo,
                                     SpringDataDetalleReservaRepository detalleRepo,
                                     SpringDataClienteRepository clienteRepo,
-                                    com.plataforma.renta.infrastructure.persistence.repository.SpringDataHerramientaRepository herramientaRepo,
+                                    SpringDataHerramientaRepository herramientaRepo,
                                     ReservaMapper reservaMapper,
                                     DetalleReservaMapper detalleMapper) {
         this.springRepo = springRepo;
@@ -47,21 +46,32 @@ public class ReservaRepositoryAdapter implements ReservaRepository {
 
     @Override
     public Reserva save(Reserva reserva) {
-        ReservaEntity entity = reservaMapper.toEntity(reserva);
-        // Load ClienteEntity by ID (primary key = usuarioId due to @MapsId)
-        ClienteEntity clienteEntity = clienteRepo.findById(reserva.getClienteId()).orElseThrow(
-            () -> new IllegalArgumentException("Cliente no encontrado: " + reserva.getClienteId()));
-        entity.setCliente(clienteEntity);
-        ReservaEntity saved = springRepo.save(entity);
-        if (reserva.getDetalles() != null) {
-            for (com.plataforma.renta.domain.model.DetalleReserva d : reserva.getDetalles()) {
-                DetalleReservaEntity detEntity = detalleMapper.toEntity(d);
-                detEntity.setReserva(saved);
-                detEntity.setHerramienta(herramientaRepo.getReferenceById(d.getHerramientaId()));
-                detalleRepo.save(detEntity);
+        Optional<ReservaEntity> existingOpt = springRepo.findById(reserva.getId());
+        ReservaEntity saved;
+        if (existingOpt.isPresent()) {
+            ReservaEntity entity = existingOpt.get();
+            entity.setEstado(com.plataforma.renta.infrastructure.persistence.entity.ReservaEstado.valueOf(reserva.getEstado().name()));
+            entity.setFechaConfirmacion(reserva.getFechaConfirmacion());
+            entity.setFechaCancelacion(reserva.getFechaCancelacion());
+            entity.setMotivoCancelacion(reserva.getMotivoCancelacion());
+            entity.setCanceladoPorUsuarioId(reserva.getCanceladoPorUsuarioId());
+            saved = springRepo.save(entity);
+        } else {
+            ReservaEntity entity = reservaMapper.toEntity(reserva);
+            ClienteEntity clienteEntity = clienteRepo.findById(reserva.getClienteId()).orElseThrow(
+                () -> new IllegalArgumentException("Cliente no encontrado: " + reserva.getClienteId()));
+            entity.setCliente(clienteEntity);
+            saved = springRepo.save(entity);
+            if (reserva.getDetalles() != null && !reserva.getDetalles().isEmpty()) {
+                for (DetalleReserva d : reserva.getDetalles()) {
+                    DetalleReservaEntity detEntity = detalleMapper.toEntity(d);
+                    detEntity.setReserva(saved);
+                    detEntity.setHerramienta(herramientaRepo.getReferenceById(d.getHerramientaId()));
+                    detalleRepo.save(detEntity);
+                }
             }
         }
-        return reservaMapper.toDomain(saved);
+        return mapWithDetalles(saved);
     }
 
     @Override
@@ -102,11 +112,17 @@ public class ReservaRepositoryAdapter implements ReservaRepository {
 
     private Reserva mapWithDetalles(ReservaEntity entity) {
         Reserva reserva = reservaMapper.toDomain(entity);
-        if (entity.getDetalles() != null) {
-            for (DetalleReservaEntity d : entity.getDetalles()) {
-                reserva.agregarDetalle(detalleMapper.toDomain(d));
-            }
+        List<DetalleReservaEntity> detalles = detalleRepo.findByReservaId(entity.getId());
+        for (DetalleReservaEntity d : detalles) {
+            reserva.agregarDetalle(detalleMapper.toDomain(d));
         }
         return reserva;
+    }
+
+    @Override
+    public List<Reserva> findAll() {
+        return springRepo.findAll().stream()
+                .map(this::mapWithDetalles)
+                .collect(Collectors.toList());
     }
 }

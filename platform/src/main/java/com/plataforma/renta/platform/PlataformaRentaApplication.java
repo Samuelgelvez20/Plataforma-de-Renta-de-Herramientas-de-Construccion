@@ -19,7 +19,9 @@ import org.springframework.context.annotation.ComponentScan;
     "com.plataforma.renta.api",
     "com.plataforma.renta.infrastructure.persistence.adapter",
     "com.plataforma.renta.infrastructure.persistence.mapper",
-    "com.plataforma.renta.infrastructure.config"
+    "com.plataforma.renta.infrastructure.config",
+    "com.plataforma.renta.infrastructure.pdf",
+    "com.plataforma.renta.platform.security"
 })
 public class PlataformaRentaApplication {
 

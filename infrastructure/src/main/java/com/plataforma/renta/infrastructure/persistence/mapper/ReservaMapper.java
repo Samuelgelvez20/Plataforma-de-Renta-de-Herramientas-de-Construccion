@@ -8,11 +8,7 @@ import com.plataforma.renta.infrastructure.persistence.entity.DetalleReservaEnti
 import com.plataforma.renta.infrastructure.persistence.entity.ReservaEntity;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -20,25 +16,21 @@ public class ReservaMapper {
 
     public Reserva toDomain(ReservaEntity entity) {
         if (entity == null) return null;
-        Reserva reserva = new Reserva(
+        UUID clienteId = entity.getCliente() != null ? entity.getCliente().getUsuarioId() : null;
+        return Reserva.reconstruir(
                 entity.getId(),
-                entity.getCliente().getUsuarioId(),
+                clienteId,
                 toDomainEstado(entity.getEstado()),
                 entity.getFechaInicio(),
                 entity.getFechaFin(),
                 entity.getFechaCreacion(),
-                entity.getFechaExpiracionPendiente()
+                entity.getFechaConfirmacion(),
+                entity.getFechaExpiracionPendiente(),
+                entity.getFechaCancelacion(),
+                entity.getMotivoCancelacion(),
+                entity.getCanceladoPorUsuarioId(),
+                entity.getActualizadoEn()
         );
-        if (entity.getDetalles() != null) {
-            for (DetalleReservaEntity d : entity.getDetalles()) {
-                reserva.agregarDetalle(detalleToDomain(d));
-            }
-        }
-        if (entity.getFechaConfirmacion() != null) reserva.confirmar(entity.getFechaConfirmacion());
-        if (entity.getFechaCancelacion() != null) {
-            reserva.cancelar(entity.getFechaCancelacion(), entity.getMotivoCancelacion(), entity.getCanceladoPorUsuarioId());
-        }
-        return reserva;
     }
 
     public ReservaEntity toEntity(Reserva domain) {
@@ -64,13 +56,13 @@ public class ReservaMapper {
         if (entity == null) return null;
         return new DetalleReserva(
                 entity.getId(),
-                entity.getReserva().getId(),
-                entity.getHerramienta().getId(),
+                entity.getReserva() != null ? entity.getReserva().getId() : null,
+                entity.getHerramienta() != null ? entity.getHerramienta().getId() : null,
                 entity.getCantidad(),
-                com.plataforma.renta.domain.value.Dinero.cop(entity.getPrecioDiaAcordado()),
-                com.plataforma.renta.domain.value.Dinero.cop(entity.getSubtotal()),
-                com.plataforma.renta.domain.value.Dinero.cop(entity.getIva()),
-                com.plataforma.renta.domain.value.Dinero.cop(entity.getTotal()),
+                Dinero.cop(entity.getPrecioDiaAcordado()),
+                Dinero.cop(entity.getSubtotal()),
+                Dinero.cop(entity.getIva()),
+                Dinero.cop(entity.getTotal()),
                 entity.getIvaPorcentaje(),
                 entity.getIvaAplica(),
                 entity.getCreadoEn()

@@ -27,4 +27,10 @@ public interface PagoRepository {
     BigDecimal sumMontoByPagoOriginalId(UUID pagoOriginalId);
 
     boolean existsCompletadoByReservaId(UUID reservaId);
+
+    boolean existsByPagoOriginalIdAndEstado(UUID pagoOriginalId, PagoEstado estado);
+
+    boolean existsByReservaId(UUID reservaId);
+
+    List<Pago> findAll();
 }

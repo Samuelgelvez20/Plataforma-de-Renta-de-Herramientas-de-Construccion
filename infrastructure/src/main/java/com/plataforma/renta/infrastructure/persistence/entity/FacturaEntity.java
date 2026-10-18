@@ -21,7 +21,7 @@ public class FacturaEntity {
     private String numeroFactura;
 
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcType(org.hibernate.dialect.type.PostgreSQLEnumJdbcType.class)
+    @org.hibernate.annotations.JdbcType(com.plataforma.renta.infrastructure.persistence.type.CustomPostgreSQLEnumJdbcType.class)
     @Column(name = "tipo", nullable = false, columnDefinition = "factura_tipo")
     private FacturaTipo tipo;
 
@@ -42,6 +42,7 @@ public class FacturaEntity {
     @Column(name = "total", nullable = false, precision = 14, scale = 2)
     private BigDecimal total;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.CHAR)
     @Column(name = "moneda", nullable = false, length = 3)
     private String moneda;
 

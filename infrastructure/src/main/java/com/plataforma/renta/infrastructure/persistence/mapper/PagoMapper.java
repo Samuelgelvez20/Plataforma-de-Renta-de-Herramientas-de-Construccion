@@ -6,10 +6,6 @@ import com.plataforma.renta.domain.value.Dinero;
 import com.plataforma.renta.infrastructure.persistence.entity.PagoEntity;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
-
 @Component
 public class PagoMapper {
 
@@ -17,7 +13,7 @@ public class PagoMapper {
         if (entity == null) return null;
         return new Pago(
                 entity.getId(),
-                entity.getReserva().getId(),
+                entity.getReserva() != null ? entity.getReserva().getId() : null,
                 entity.getPagoOriginal() != null ? entity.getPagoOriginal().getId() : null,
                 toDomainEstado(entity.getEstado()),
                 entity.getProveedorPago(),
@@ -31,10 +27,10 @@ public class PagoMapper {
 
     public PagoEntity toEntity(Pago domain) {
         if (domain == null) return null;
-        PagoEntity entity = new PagoEntity(
+        return new PagoEntity(
                 domain.getId(),
-                null, // reserva se setea aparte
-                domain.getPagoOriginalId() != null ? new PagoEntity() : null, // se setea aparte
+                null,
+                null,
                 toEntityEstado(domain.getEstado()),
                 domain.getProveedorPago(),
                 domain.getTransaccionId(),
@@ -44,7 +40,6 @@ public class PagoMapper {
                 domain.getFechaPago(),
                 domain.getCreadoEn()
         );
-        return entity;
     }
 
     private PagoEstado toDomainEstado(com.plataforma.renta.infrastructure.persistence.entity.PagoEstado estado) {

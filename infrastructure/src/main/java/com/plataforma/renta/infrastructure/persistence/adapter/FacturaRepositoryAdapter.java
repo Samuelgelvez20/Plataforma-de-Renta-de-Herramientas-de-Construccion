@@ -1,11 +1,12 @@
 package com.plataforma.renta.infrastructure.persistence.adapter;
 
 import com.plataforma.renta.domain.model.Factura;
-import com.plataforma.renta.domain.model.FacturaTipo;
 import com.plataforma.renta.domain.port.out.FacturaRepository;
 import com.plataforma.renta.infrastructure.persistence.entity.FacturaEntity;
 import com.plataforma.renta.infrastructure.persistence.mapper.FacturaMapper;
 import com.plataforma.renta.infrastructure.persistence.repository.SpringDataFacturaRepository;
+import com.plataforma.renta.infrastructure.persistence.repository.SpringDataPagoRepository;
+import com.plataforma.renta.infrastructure.persistence.repository.SpringDataReservaRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -17,16 +18,32 @@ import java.util.stream.Collectors;
 public class FacturaRepositoryAdapter implements FacturaRepository {
 
     private final SpringDataFacturaRepository springRepo;
+    private final SpringDataReservaRepository reservaRepo;
+    private final SpringDataPagoRepository pagoRepo;
     private final FacturaMapper mapper;
 
-    public FacturaRepositoryAdapter(SpringDataFacturaRepository springRepo, FacturaMapper mapper) {
+    public FacturaRepositoryAdapter(SpringDataFacturaRepository springRepo,
+                                   SpringDataReservaRepository reservaRepo,
+                                   SpringDataPagoRepository pagoRepo,
+                                   FacturaMapper mapper) {
         this.springRepo = springRepo;
+        this.reservaRepo = reservaRepo;
+        this.pagoRepo = pagoRepo;
         this.mapper = mapper;
     }
 
     @Override
     public Factura save(Factura factura) {
         FacturaEntity entity = mapper.toEntity(factura);
+        if (factura.getReservaId() != null) {
+            entity.setReserva(reservaRepo.getReferenceById(factura.getReservaId()));
+        }
+        if (factura.getFacturaOriginalId() != null) {
+            entity.setFacturaOriginal(springRepo.getReferenceById(factura.getFacturaOriginalId()));
+        }
+        if (factura.getPagoReembolsoId() != null) {
+            entity.setPagoReembolso(pagoRepo.getReferenceById(factura.getPagoReembolsoId()));
+        }
         return mapper.toDomain(springRepo.save(entity));
     }
 
@@ -62,5 +79,12 @@ public class FacturaRepositoryAdapter implements FacturaRepository {
     @Override
     public boolean existsByNumeroFactura(String numeroFactura) {
         return springRepo.existsByNumeroFactura(numeroFactura);
+    }
+
+    @Override
+    public List<Factura> findAll() {
+        return springRepo.findAll().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
     }
 }

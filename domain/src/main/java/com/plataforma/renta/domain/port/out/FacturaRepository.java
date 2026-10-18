@@ -22,4 +22,6 @@ public interface FacturaRepository {
     Optional<Factura> findByPagoReembolsoId(UUID pagoReembolsoId);
 
     boolean existsByNumeroFactura(String numeroFactura);
+
+    List<Factura> findAll();
 }
