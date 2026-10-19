@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tool, Category } from '../types';
+import { resolveToolImage, defaultExcavator } from '../utils/imageResolver';
 import { api } from '../services/api';
 import { Search, SlidersHorizontal, Calendar, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -214,7 +215,8 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onSelectTool, onBookTo
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredTools.map((tool) => {
-            const isAvailable = tool.estadoOperativo === 'DISPONIBLE';
+            const stockDisp = tool.cantidadDisponible !== undefined ? tool.cantidadDisponible : (tool.cantidadTotal || 1);
+            const isAvailable = tool.estadoOperativo === 'DISPONIBLE' && stockDisp > 0;
             const calculatedSubtotal = tool.precioPorDia * currentDays;
             const calculatedTotal = calculatedSubtotal * (1 + IVA_RATE);
 
@@ -227,13 +229,11 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onSelectTool, onBookTo
                   {/* Equipment Photography */}
                   <div className="relative h-48 bg-neutral-100 overflow-hidden">
                     <img
-                      src={tool.imagenUrl}
+                      src={resolveToolImage(tool)}
                       alt={tool.nombre}
-                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
                       onError={(e) => {
-                        // Fallback container on image load error
-                        (e.target as HTMLElement).style.display = 'none';
+                        (e.target as HTMLImageElement).src = defaultExcavator;
                       }}
                     />
                     {/* Operational state badge top right */}
@@ -241,12 +241,12 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onSelectTool, onBookTo
                       {isAvailable ? (
                         <>
                           <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                          <span>Disponible</span>
+                          <span>Disponible ({stockDisp} unid.)</span>
                         </>
                       ) : (
                         <>
-                          <AlertCircle className="w-3 h-3 text-amber-400" />
-                          <span>{tool.estadoOperativo}</span>
+                          <AlertCircle className="w-3 h-3 text-rose-400" />
+                          <span>Sin Stock</span>
                         </>
                       )}
                     </div>
@@ -260,9 +260,8 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onSelectTool, onBookTo
                       <span aria-hidden="true">·</span>
                       <span>Mod. {tool.modelo}</span>
                       <span aria-hidden="true">·</span>
-                      <span className="flex items-center gap-0.5">
-                        <MapPin className="w-2.5 h-2.5" />
-                        <span className="truncate max-w-[120px]">{tool.ubicacion.split('-')[0]}</span>
+                      <span className={stockDisp > 0 ? "font-semibold text-emerald-700" : "font-semibold text-rose-600"}>
+                        Stock: {stockDisp} de {tool.cantidadTotal || 1}
                       </span>
                     </div>
 
@@ -319,7 +318,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onSelectTool, onBookTo
                           : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                       }`}
                     >
-                      {isAvailable ? 'Reservar' : 'No Disponible'}
+                      {isAvailable ? 'Reservar' : 'Sin Stock'}
                     </button>
                   </div>
                 </div>

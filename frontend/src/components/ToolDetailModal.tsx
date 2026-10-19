@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Tool } from '../types';
+import { resolveToolImage, defaultExcavator } from '../utils/imageResolver';
 import { api } from '../services/api';
 import { X, CheckCircle2, AlertTriangle, ShieldCheck, MapPin, Calendar, Clock } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 interface ToolDetailModalProps {
   tool: Tool | null;
@@ -10,6 +12,7 @@ interface ToolDetailModalProps {
 }
 
 export const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onBook }) => {
+  const { toast } = useToast();
   const [checkStart, setCheckStart] = useState('');
   const [checkEnd, setCheckEnd] = useState('');
   const [availabilityResult, setAvailabilityResult] = useState<{ disponible: boolean; estadoOperativo: string; conflictos: any[] } | null>(null);
@@ -19,7 +22,7 @@ export const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose,
 
   const handleCheck = async () => {
     if (!checkStart || !checkEnd) {
-      alert('Seleccione fecha de inicio y fin para verificar disponibilidad');
+      toast.warning('Seleccione fecha de inicio y fin para verificar disponibilidad', 'Fechas Requeridas');
       return;
     }
     setChecking(true);
@@ -27,7 +30,7 @@ export const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose,
       const res = await api.checkAvailability(tool.id, checkStart, checkEnd);
       setAvailabilityResult(res);
     } catch (e: any) {
-      alert(e.message || 'Error al consultar disponibilidad');
+      toast.error(e.message || 'Error al consultar disponibilidad');
     } finally {
       setChecking(false);
     }
@@ -62,9 +65,10 @@ export const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose,
             {/* Image */}
             <div className="rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200 h-64">
               <img
-                src={tool.imagenUrl}
+                src={resolveToolImage(tool)}
                 alt={tool.nombre}
                 className="w-full h-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).src = defaultExcavator; }}
               />
             </div>
 
@@ -100,6 +104,12 @@ export const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose,
                   <span>Depósito de garantía:</span>
                   <span className="font-mono tabular-nums font-semibold">
                     ${tool.depositoGarantia.toLocaleString('es-CO')} COP
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between text-xs text-neutral-600 mb-2">
+                  <span>Disponibilidad actual:</span>
+                  <span className="font-mono tabular-nums font-bold text-emerald-700">
+                    {(tool.cantidadDisponible !== undefined ? tool.cantidadDisponible : tool.cantidadTotal)} unidades disponibles (de {tool.cantidadTotal || 1} registradas)
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between text-[11px] text-neutral-500 pt-2 border-t border-neutral-200">

@@ -3,6 +3,41 @@ import { Reservation, Invoice } from '../types';
 import { api } from '../services/api';
 import confetti from 'canvas-confetti';
 import { X, CreditCard, Building2, CheckCircle2, FileDown, ShieldCheck, AlertCircle } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+
+const LISTA_BANCOS_COLOMBIA = [
+  'Bancolombia (Opción a elegir para pagar con fondos de Nequi)',
+  'Banco de Bogotá',
+  'Banco Davivienda',
+  'BBVA Colombia',
+  'Banco de Occidente',
+  'Banco Popular',
+  'Banco Itaú',
+  'Scotiabank Colpatria',
+  'Banco Caja Social',
+  'Banco Agrario de Colombia',
+  'Banco AV Villas',
+  'Banco Pichincha',
+  'Banco Santander Colombia',
+  'Citibank (Banca corporativa)',
+  'Banco GNB Sudameris',
+  'Lulo Bank (Primer banco 100% digital del país)',
+  'Dale! (Billetera digital del Grupo Aval)',
+  'Rappipay / Daviplata (Aparecen unificados en el selector técnico bajo Davivienda)',
+  'Banco Finandina (Enfoque digital y automotriz)',
+  'Banco Falabella',
+  'Bancamía',
+  'Banco Mundo Mujer',
+  'Banco Serfinanza',
+  'Bancoomeva',
+  'Banco Cooperativo Coopcentral',
+  'Banco ProCredit',
+  'CFA Cooperativa Financiera',
+  'Cooperativa Financiera JFK (Otras cooperativas regionales se canalizan mediante la red Coopcentral)',
+  'JP Morgan (Exclusivo para clientes corporativos)',
+  'Nequi',
+  'Nu (Nubank)'
+];
 
 interface CheckoutPaymentModalProps {
   reservation: Reservation | null;
@@ -15,8 +50,9 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
   onClose,
   onPaymentSuccess
 }) => {
+  const { toast } = useToast();
   const [metodo, setMetodo] = useState<'PSE' | 'TARJETA_CREDITO' | 'TRANSFERENCIA_BANCARIA'>('PSE');
-  const [banco, setBanco] = useState('Bancolombia');
+  const [banco, setBanco] = useState(LISTA_BANCOS_COLOMBIA[0]);
   const [numeroTarjeta, setNumeroTarjeta] = useState('4532 •••• •••• 8821');
   const [titular, setTitular] = useState('Constructora Colpatria Ingeniería');
   const [processing, setProcessing] = useState(false);
@@ -57,8 +93,9 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
     if (!completedInvoice) return;
     try {
       await api.downloadInvoicePdf(completedInvoice.id, completedInvoice.numeroFactura);
+      toast.success('Descarga de factura PDF completada exitosamente', 'Factura Descargada');
     } catch (e) {
-      alert('Error descargando el PDF de la factura');
+      toast.error('Error descargando el PDF de la factura', 'Fallo de Descarga');
     }
   };
 
@@ -167,20 +204,21 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
             {/* Payment Method Selector */}
             <div className="mb-4">
               <label className="block text-xs font-semibold text-neutral-700 mb-2">
-                Seleccione Método de Pago
+                Seleccione Método de Pago Seguro
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setMetodo('PSE')}
                   className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                     metodo === 'PSE'
-                      ? 'border-amber-500 bg-amber-50/50 text-neutral-900 font-bold'
+                      ? 'border-amber-500 bg-amber-50/60 text-neutral-900 font-bold shadow-xs ring-1 ring-amber-500'
                       : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
                   }`}
                 >
                   <Building2 className="w-5 h-5 mx-auto mb-1 text-amber-600" />
-                  <span className="text-xs block">PSE Débito</span>
+                  <span className="text-xs block font-bold">PSE Débito</span>
+                  <span className="text-[10px] text-neutral-500 block">Cuentas bancarias y billeteras</span>
                 </button>
 
                 <button
@@ -188,25 +226,13 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
                   onClick={() => setMetodo('TARJETA_CREDITO')}
                   className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                     metodo === 'TARJETA_CREDITO'
-                      ? 'border-amber-500 bg-amber-50/50 text-neutral-900 font-bold'
+                      ? 'border-amber-500 bg-amber-50/60 text-neutral-900 font-bold shadow-xs ring-1 ring-amber-500'
                       : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
                   }`}
                 >
                   <CreditCard className="w-5 h-5 mx-auto mb-1 text-amber-600" />
-                  <span className="text-xs block">Tarjeta Crédito</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMetodo('TRANSFERENCIA_BANCARIA')}
-                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                    metodo === 'TRANSFERENCIA_BANCARIA'
-                      ? 'border-amber-500 bg-amber-50/50 text-neutral-900 font-bold'
-                      : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
-                  }`}
-                >
-                  <Building2 className="w-5 h-5 mx-auto mb-1 text-amber-600" />
-                  <span className="text-xs block">Transferencia</span>
+                  <span className="text-xs block font-bold">Tarjeta de Crédito</span>
+                  <span className="text-[10px] text-neutral-500 block">Visa, Mastercard, Amex</span>
                 </button>
               </div>
             </div>
@@ -215,17 +241,19 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
             {metodo === 'PSE' && (
               <div className="mb-5 space-y-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-neutral-600 mb-1">Banco Autorizado</label>
+                  <label className="block text-[11px] font-semibold text-neutral-600 mb-1">
+                    Banco o Entidad Financiera ({LISTA_BANCOS_COLOMBIA.length} entidades disponibles)
+                  </label>
                   <select
                     value={banco}
                     onChange={(e) => setBanco(e.target.value)}
-                    className="w-full text-xs p-2.5 bg-white border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full text-xs p-2.5 bg-white border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
                   >
-                    <option value="Bancolombia">Bancolombia</option>
-                    <option value="Banco de Bogotá">Banco de Bogotá</option>
-                    <option value="Davivienda">Davivienda</option>
-                    <option value="BBVA Colombia">BBVA Colombia</option>
-                    <option value="Banco de Occidente">Banco de Occidente</option>
+                    {LISTA_BANCOS_COLOMBIA.map((nombreBanco) => (
+                      <option key={nombreBanco} value={nombreBanco}>
+                        {nombreBanco}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>

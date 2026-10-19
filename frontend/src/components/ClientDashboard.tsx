@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Reservation, Invoice, RefundRequest } from '../types';
 import { api } from '../services/api';
 import { Calendar, CreditCard, FileDown, RotateCcw, CheckCircle2, Clock, XCircle, AlertTriangle } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 interface ClientDashboardProps {
   onPayReservation: (reservation: Reservation) => void;
@@ -12,6 +13,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   onPayReservation,
   onViewInvoice
 }) => {
+  const { toast } = useToast();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [refunds, setRefunds] = useState<RefundRequest[]>([]);
@@ -21,6 +23,32 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   const [selectedRefundResv, setSelectedRefundResv] = useState<Reservation | null>(null);
   const [refundReason, setRefundReason] = useState('');
   const [submittingRefund, setSubmittingRefund] = useState(false);
+
+  // Return modal state for client
+  const [returnConfirmResv, setReturnConfirmResv] = useState<Reservation | null>(null);
+  const [submittingReturn, setSubmittingReturn] = useState(false);
+  const [returnClientNote, setReturnClientNote] = useState("");
+
+  // Cancel reservation modal state
+  const [cancelConfirmResv, setCancelConfirmResv] = useState<Reservation | null>(null);
+  const [submittingCancel, setSubmittingCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+
+  const handleCancelReservation = async () => {
+    if (!cancelConfirmResv) return;
+    try {
+      setSubmittingCancel(true);
+      await api.cancelReservation(cancelConfirmResv.id, cancelReason);
+      toast.success('Reserva cancelada con éxito. Se ha liberado la disponibilidad del equipo.', 'Reserva Cancelada');
+      setCancelConfirmResv(null);
+      setCancelReason('');
+      await loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Error al cancelar la reserva', 'Fallo de Cancelación');
+    } finally {
+      setSubmittingCancel(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -48,7 +76,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     try {
       await api.downloadInvoicePdf(inv.id, inv.numeroFactura);
     } catch (e) {
-      alert('Error descargando el PDF');
+      toast.error('Error descargando el comprobante PDF', 'Fallo de Descarga');
     }
   };
 
@@ -64,24 +92,25 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     // Find invoice and payment
     const inv = invoices.find(f => f.reservaId === selectedRefundResv.id);
     if (!inv) {
-      alert('No se localizó el registro de pago para esta reserva');
+      toast.error('No se localizó el registro de pago para esta reserva', 'Registro no encontrado');
       return;
     }
 
     setSubmittingRefund(true);
     try {
       await api.requestRefund(inv.pagoId || selectedRefundResv.id, refundReason);
-      alert('Solicitud de reembolso registrada correctamente. El propietario o administrador la evaluará.');
+      toast.success('Solicitud de reembolso registrada correctamente. El propietario o administrador la evaluará.', 'Reembolso Solicitado');
       setSelectedRefundResv(null);
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Error solicitando reembolso');
+      toast.error(err.message || 'Error solicitando reembolso', 'Fallo en Solicitud');
     } finally {
       setSubmittingRefund(false);
     }
   };
 
-  const renderStatus = (estado: string) => {
+  const renderStatus = (r: Reservation) => {
+    const estado = r.estado;
     switch (estado) {
       case 'PENDIENTE':
         return (
@@ -90,11 +119,58 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <span>Pendiente Aprobación</span>
           </span>
         );
+      case 'CONFIRMADA':
       case 'ACEPTADA':
+        if (r.pagada) {
+          return (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Pagada (Preparando Despacho)</span>
+            </span>
+          );
+        }
         return (
           <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700">
             <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
-            <span>Aceptada (Lista para Pago)</span>
+            <span>Confirmada (Pendiente de Pago)</span>
+          </span>
+        );
+      case 'EN_CURSO':
+      case 'ENTREGADA':
+        if (r.solicitudDevolucion || r.estadoDevolucion === 'PENDIENTE_REVISION') {
+          return (
+            <div>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                <span>Devolución Notificada (En Espera de Inspección)</span>
+              </span>
+              {r.notaDevolucionCliente && (
+                <span className="text-[11px] text-neutral-500 block italic truncate max-w-xs mt-0.5">
+                  Informe: "{r.notaDevolucionCliente}"
+                </span>
+              )}
+            </div>
+          );
+        }
+        if (r.estadoDevolucion === 'RECHAZADA_POR_DANOS') {
+          return (
+            <div>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-rose-700">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                <span>Retorno Observado por Daños</span>
+              </span>
+              {r.costoReparacion && r.costoReparacion > 0 ? (
+                <span className="text-[11px] text-rose-600 block font-mono font-bold mt-0.5">
+                  Cargos por avería: ${r.costoReparacion.toLocaleString('es-CO')} COP
+                </span>
+              ) : null}
+            </div>
+          );
+        }
+        return (
+          <span className="flex items-center gap-1.5 text-xs font-medium text-purple-700">
+            <Clock className="w-3.5 h-3.5 text-purple-500" />
+            <span>En Obra (Alquilada)</span>
           </span>
         );
       case 'PAGADA':
@@ -104,21 +180,29 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <span>Pagada (Por Despachar)</span>
           </span>
         );
-      case 'ENTREGADA':
-        return (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-purple-700">
-            <Clock className="w-3.5 h-3.5 text-purple-500" />
-            <span>En Obra (Alquilada)</span>
-          </span>
-        );
+      case 'FINALIZADA':
       case 'DEVUELTA':
+        if (r.costoReparacion && r.costoReparacion > 0) {
+          return (
+            <div>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-800">
+                <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                <span>Devuelta (con Cobro de Daños)</span>
+              </span>
+              <span className="text-[11px] text-amber-700 font-mono block mt-0.5">
+                Reparación: ${r.costoReparacion.toLocaleString('es-CO')} COP
+              </span>
+            </div>
+          );
+        }
         return (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-neutral-600">
-            <CheckCircle2 className="w-3.5 h-3.5 text-neutral-400" />
-            <span>Devuelta / Finalizada</span>
+          <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Devuelta en Buen Estado</span>
           </span>
         );
       case 'CANCELADA':
+      case 'EXPIRADA':
       case 'RECHAZADA':
         return (
           <span className="flex items-center gap-1.5 text-xs font-medium text-rose-700">
@@ -185,8 +269,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 <tbody className="divide-y divide-neutral-100">
                   {reservations.map((r) => {
                     const invoice = invoices.find(inv => inv.reservaId === r.id);
-                    const canPay = r.estado === 'ACEPTADA';
-                    const canRefund = ['PAGADA', 'ENTREGADA', 'DEVUELTA'].includes(r.estado) && invoice;
+                    const canPay = (r.estado === 'CONFIRMADA' || r.estado === 'ACEPTADA') && !r.pagada;
+                    const canRefund = ['CONFIRMADA', 'PAGADA', 'EN_CURSO', 'ENTREGADA', 'FINALIZADA', 'DEVUELTA'].includes(r.estado) && invoice;
 
                     return (
                       <tr key={r.id} className="hover:bg-neutral-50/80 transition-colors">
@@ -209,7 +293,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                           ${r.total.toLocaleString('es-CO')}
                         </td>
                         <td className="py-3.5 px-4">
-                          {renderStatus(r.estado)}
+                          {renderStatus(r)}
                         </td>
                         <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-2">
                           {canPay && (
@@ -222,6 +306,20 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                             </button>
                           )}
 
+                          {(r.estado === 'PENDIENTE' || r.estado === 'CONFIRMADA') && (
+                            <button
+                              onClick={() => {
+                                setCancelConfirmResv(r);
+                                setCancelReason('');
+                              }}
+                              className="px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1 shadow-xs"
+                              title="Cancelar solicitud o reserva de equipo"
+                            >
+                              <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                              <span>Cancelar</span>
+                            </button>
+                          )}
+
                           {invoice && (
                             <button
                               onClick={() => handleDownloadPdf(invoice)}
@@ -230,6 +328,20 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                             >
                               <FileDown className="w-3.5 h-3.5 text-amber-600" />
                               <span>PDF Factura</span>
+                            </button>
+                          )}
+
+                          {(r.estado === 'EN_CURSO' || r.estado === 'ENTREGADA') && !r.solicitudDevolucion && r.estadoDevolucion !== 'PENDIENTE_REVISION' && (
+                            <button
+                              onClick={() => {
+                                setReturnConfirmResv(r);
+                                setReturnClientNote('');
+                              }}
+                              className="px-2.5 py-1 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1 shadow-xs"
+                              title="Notificar devolución al propietario"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Devolver Equipo</span>
                             </button>
                           )}
 
@@ -250,6 +362,55 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               </table>
             </div>
           </div>
+
+          {/* Invoices and PDF Downloads */}
+          {invoices.length > 0 && (
+            <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-xs">
+              <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                  <FileDown className="w-4 h-4 text-amber-600" />
+                  <span>Facturas Comerciales Emitidas</span>
+                </h3>
+                <span className="text-xs text-neutral-500">Comprobantes válidos con desglose de IVA (19%)</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-neutral-200 bg-neutral-100/60 text-neutral-600 font-semibold uppercase tracking-wider text-[11px]">
+                      <th className="py-3 px-4">Nº Factura</th>
+                      <th className="py-3 px-4">Reserva Asociada</th>
+                      <th className="py-3 px-4">Emisor</th>
+                      <th className="py-3 px-4 text-right">Subtotal</th>
+                      <th className="py-3 px-4 text-right">IVA 19%</th>
+                      <th className="py-3 px-4 text-right">Total (COP)</th>
+                      <th className="py-3 px-4 text-right">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {invoices.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-neutral-50/80 transition-colors">
+                        <td className="py-3 px-4 font-mono font-bold text-neutral-900">{inv.numeroFactura}</td>
+                        <td className="py-3 px-4 font-mono text-neutral-600">#{inv.reservaId}</td>
+                        <td className="py-3 px-4 text-neutral-700">{inv.propietarioNombre || 'Proveedor Maquinaria'}</td>
+                        <td className="py-3 px-4 text-right font-mono tabular-nums text-neutral-700">${inv.subtotal.toLocaleString('es-CO')}</td>
+                        <td className="py-3 px-4 text-right font-mono tabular-nums text-neutral-700">${inv.iva.toLocaleString('es-CO')}</td>
+                        <td className="py-3 px-4 text-right font-mono tabular-nums font-bold text-neutral-900">${inv.total.toLocaleString('es-CO')}</td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => handleDownloadPdf(inv)}
+                            className="px-3 py-1 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg inline-flex items-center gap-1 cursor-pointer shadow-xs"
+                          >
+                            <FileDown className="w-3.5 h-3.5" />
+                            <span>Descargar PDF</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Refund Requests History */}
           {refunds.length > 0 && (
@@ -325,6 +486,82 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Client Return Confirmation Modal Card */}
+      {returnConfirmResv && (
+        <div className="fixed inset-0 z-50 bg-neutral-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-neutral-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-neutral-900 text-center mb-1">
+                Registrar Retorno de Maquinaria
+              </h3>
+              <p className="text-xs text-neutral-600 text-center leading-relaxed mb-4">
+                Notifique al propietario que ha concluido el uso de <strong>{returnConfirmResv.herramientaNombre}</strong> y entrega el equipo para su inspección técnica.
+              </p>
+
+              <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 text-xs text-neutral-700 font-mono mb-4 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Reserva:</span>
+                  <span className="font-bold text-neutral-900">#{returnConfirmResv.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Periodo de Renta:</span>
+                  <span>{returnConfirmResv.fechaInicio} al {returnConfirmResv.fechaFin}</span>
+                </div>
+              </div>
+
+              <div className="mb-5">
+                <label className="block text-xs font-semibold text-neutral-800 mb-1.5">
+                  Informe o Novedades del Estado del Equipo <span className="text-neutral-400 font-normal">(Opcional)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={returnClientNote}
+                  onChange={(e) => setReturnClientNote(e.target.value)}
+                  placeholder="Ej: El equipo funcionó correctamente en obra. Se entrega limpio y con accesorios completos..."
+                  className="w-full p-2.5 text-xs bg-white border border-neutral-300 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-amber-500 leading-relaxed"
+                />
+                <span className="text-[11px] text-neutral-500 block mt-1">
+                  Este informe será revisado por el propietario durante la inspección de recepción.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-100">
+                <button
+                  type="button"
+                  disabled={submittingReturn}
+                  onClick={() => setReturnConfirmResv(null)}
+                  className="px-4 py-2 text-xs font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={submittingReturn}
+                  onClick={async () => {
+                    setSubmittingReturn(true);
+                    try {
+                      await api.requestReturn(returnConfirmResv.id, { notaCliente: returnClientNote });
+                      toast.success('Devolución notificada al propietario. El equipo queda en espera de inspección técnica.', 'Devolución Notificada');
+                      setReturnConfirmResv(null);
+                      loadData();
+                    } catch (err: any) {
+                      toast.error(err.message || 'Error al notificar la devolución');
+                    } finally {
+                      setSubmittingReturn(false);
+                    }
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center gap-1.5"
+                >
+                  {submittingReturn ? 'Enviando...' : 'Enviar Devolución a Propietario'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

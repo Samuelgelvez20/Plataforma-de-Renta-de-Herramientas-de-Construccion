@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { CatalogView } from './components/CatalogView';
@@ -16,6 +17,11 @@ import { ShieldCheck, HardHat, FileText, CheckCircle2 } from 'lucide-react';
 function AppContent() {
   const { user } = useAuth();
   const [currentView, setCurrentView] = useState<'catalog' | 'client' | 'owner' | 'admin'>('catalog');
+
+  // Redirigir a la vista principal del catálogo siempre que cambie la sesión (login, logout, cambio de cuenta)
+  useEffect(() => {
+    setCurrentView('catalog');
+  }, [user?.id, user?.email]);
 
   // Modales
   const [selectedToolForDetail, setSelectedToolForDetail] = useState<Tool | null>(null);
@@ -68,7 +74,25 @@ function AppContent() {
         )}
 
         {currentView === 'owner' && (
-          <OwnerDashboard />
+          user?.rol === 'PROPIETARIO' || user?.rol === 'ADMIN' ? (
+            <OwnerDashboard />
+          ) : (
+            <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+              <div className="p-8 bg-white rounded-2xl border border-neutral-200 shadow-xs">
+                <ShieldCheck className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+                <h2 className="text-base font-bold text-neutral-900">Acceso Exclusivo para Propietarios</h2>
+                <p className="text-xs text-neutral-600 mt-2 max-w-md mx-auto leading-relaxed">
+                  Su cuenta actual ({user?.email}) tiene rol de {user?.rol}. Para registrar maquinaria, despachos u operar devoluciones técnicas, inicie sesión con una cuenta de Propietario o use el selector rápido 'Demo dev' en la barra superior.
+                </p>
+                <button
+                  onClick={() => setCurrentView('catalog')}
+                  className="mt-5 px-4 py-2 text-xs font-bold bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer"
+                >
+                  Volver al Catálogo
+                </button>
+              </div>
+            </div>
+          )
         )}
 
         {currentView === 'admin' && (
@@ -107,14 +131,14 @@ function AppContent() {
       {/* Quiet Professional Footer */}
       <footer className="bg-white border-t border-neutral-200 mt-16 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
             <HardHat className="w-4 h-4 text-amber-500" />
             <span className="font-semibold text-neutral-800">Plataforma de Renta de Equipos de Construcción</span>
             <span>·</span>
             <span>Arquitectura Hexagonal & DDD</span>
           </div>
 
-          <div className="flex items-center gap-4 text-[11px] font-mono">
+          <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono justify-center sm:justify-end">
             <span>Spring Boot 3.2.4</span>
             <span>·</span>
             <span>Java 21</span>
@@ -133,9 +157,11 @@ function AppContent() {
 
 export function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ToastProvider>
   );
 }
 

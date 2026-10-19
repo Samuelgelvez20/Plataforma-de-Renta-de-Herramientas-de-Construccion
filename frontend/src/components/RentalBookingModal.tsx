@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Tool } from '../types';
+import { resolveToolImage, defaultExcavator } from '../utils/imageResolver';
 import { api } from '../services/api';
 import { X, Calendar, Calculator, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 interface RentalBookingModalProps {
   tool: Tool | null;
@@ -18,8 +20,10 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
   onOpenAuth
 }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  const [cantidad, setCantidad] = useState(1);
   const [notasCliente, setNotasCliente] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -36,7 +40,7 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
   };
 
   const days = calculateDays();
-  const subtotal = tool.precioPorDia * days;
+  const subtotal = tool.precioPorDia * days * cantidad;
   const iva = Math.round(subtotal * 0.19);
   const total = subtotal + iva;
 
@@ -61,11 +65,12 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
     try {
       await api.createReservation({
         herramientaId: tool.id,
+        cantidad,
         fechaInicio,
         fechaFin,
         notasCliente
       });
-      alert('¡Reserva creada con éxito en estado PENDIENTE! El propietario revisará la solicitud.');
+      toast.success('¡Reserva creada con éxito en estado PENDIENTE! El propietario revisará la solicitud.', 'Reserva Creada');
       onSuccess();
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al procesar la reserva');
@@ -99,9 +104,10 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
           {/* Selected Tool Summary */}
           <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-200 mb-5">
             <img
-              src={tool.imagenUrl}
+              src={resolveToolImage(tool)}
               alt={tool.nombre}
               className="w-16 h-16 object-cover rounded-lg shrink-0 border border-neutral-200"
+              onError={(e) => { (e.target as HTMLImageElement).src = defaultExcavator; }}
             />
             <div className="overflow-hidden">
               <h4 className="text-xs font-bold text-neutral-900 truncate">{tool.nombre}</h4>
@@ -119,8 +125,30 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
             </div>
           )}
 
-          {/* Date Range Inputs */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          {/* Cantidad y Fechas */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div>
+              <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                Unidades Deseadas *
+              </label>
+              <input
+                type="number"
+                required
+                min="1"
+                max={Math.max(1, tool.cantidadDisponible !== undefined ? tool.cantidadDisponible : (tool.cantidadTotal || 1))}
+                value={cantidad}
+                onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                disabled={(tool.cantidadDisponible !== undefined ? tool.cantidadDisponible : (tool.cantidadTotal || 1)) <= 0}
+                className="w-full text-xs p-2.5 bg-white border border-neutral-300 rounded-lg font-mono focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+              />
+              <span className={`text-[11px] block mt-1 font-medium ${
+                (tool.cantidadDisponible !== undefined ? tool.cantidadDisponible : (tool.cantidadTotal || 1)) > 0
+                  ? 'text-emerald-700'
+                  : 'text-rose-600 font-bold'
+              }`}>
+                Stock disponible: {(tool.cantidadDisponible !== undefined ? tool.cantidadDisponible : (tool.cantidadTotal || 1))} de {tool.cantidadTotal || 1} unidades registradas
+              </span>
+            </div>
             <div>
               <label className="block text-xs font-semibold text-neutral-700 mb-1">
                 Fecha de Inicio *
@@ -175,7 +203,7 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
               <span className="font-mono text-white font-semibold tabular-nums">{days} {days === 1 ? 'día' : 'días'}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-              <span>Subtotal ({days} x ${tool.precioPorDia.toLocaleString('es-CO')}):</span>
+              <span>Subtotal ({days}d x {cantidad}u x ${tool.precioPorDia.toLocaleString('es-CO')}):</span>
               <span className="font-mono text-white tabular-nums">${subtotal.toLocaleString('es-CO')} COP</span>
             </div>
             <div className="flex items-center justify-between text-xs text-neutral-400 mb-3 pb-3 border-b border-neutral-800">

@@ -26,6 +26,8 @@ export interface Tool {
   propietarioId: string | number;
   precioPorDia: number;
   depositoGarantia: number;
+  cantidadTotal?: number;
+  cantidadDisponible?: number;
   estadoPublicacion: 'PUBLICADA' | 'BORRADOR' | 'ARCHIVADA';
   estadoOperativo: 'DISPONIBLE' | 'ALQUILADA' | 'EN_MANTENIMIENTO' | 'DANADA';
   imagenUrl: string;
@@ -49,13 +51,21 @@ export interface Reservation {
   subtotal: number;
   iva: number;
   total: number;
-  estado: 'PENDIENTE' | 'ACEPTADA' | 'RECHAZADA' | 'PAGADA' | 'ENTREGADA' | 'DEVUELTA' | 'CANCELADA';
+  estado: 'PENDIENTE' | 'CONFIRMADA' | 'EN_CURSO' | 'FINALIZADA' | 'CANCELADA' | 'EXPIRADA' | 'RECHAZADA' | 'ACEPTADA' | 'PAGADA' | 'ENTREGADA' | 'DEVUELTA';
   notasCliente?: string;
   motivoRechazo?: string;
   fechaCreacion: string;
   herramientaNombre?: string;
   herramientaImagen?: string;
   clienteNombre?: string;
+  pagada?: boolean;
+  solicitudDevolucion?: boolean;
+  estadoDevolucion?: string;
+  notaDevolucionCliente?: string;
+  costoReparacion?: number;
+  descripcionDano?: string;
+  observacionPropietario?: string;
+  fechaDevolucion?: string;
 }
 
 export interface Payment {

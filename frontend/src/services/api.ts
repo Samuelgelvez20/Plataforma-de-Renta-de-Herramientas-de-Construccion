@@ -61,6 +61,8 @@ function normalizeTool(t: any): Tool {
     propietarioId: t.propietarioId,
     precioPorDia: t.precioPorDia ?? t.precioDia ?? 0,
     depositoGarantia: t.depositoGarantia ?? 0,
+    cantidadTotal: t.cantidadTotal ?? 1,
+    cantidadDisponible: t.cantidadDisponible !== undefined ? t.cantidadDisponible : (t.cantidadTotal ?? 1),
     estadoPublicacion: t.estadoPublicacion || 'PUBLICADA',
     estadoOperativo: t.estadoOperativo || 'DISPONIBLE',
     imagenUrl: t.imagenUrl || '',
@@ -97,7 +99,8 @@ function normalizeReservation(r: any): Reservation {
     motivoRechazo: r.motivoRechazo,
     fechaCreacion: r.creadoEn || r.fechaCreacion || new Date().toISOString(),
     herramientaNombre: primerDetalle?.herramientaNombre || 'Equipo de Construcción',
-    clienteNombre: r.clienteNombre
+    clienteNombre: r.clienteNombre,
+    pagada: Boolean(r.pagada)
   };
 }
 
@@ -145,9 +148,10 @@ export const api = {
   async getTools(params?: { categoriaId?: string | number; propietarioId?: string | number; search?: string; disponible?: boolean; precioMax?: number }): Promise<Tool[]> {
     const url = new URL(`${API_BASE}/herramientas`);
     if (params?.categoriaId) url.searchParams.append('categoriaId', params.categoriaId.toString());
-    if (params?.search) url.searchParams.append('search', params.search);
+    if (params?.propietarioId) url.searchParams.append('propietarioId', params.propietarioId.toString());
+    if (params?.search) url.searchParams.append('query', params.search);
     if (params?.disponible !== undefined) url.searchParams.append('disponible', params.disponible.toString());
-    if (params?.precioMax) url.searchParams.append('precioMax', params.precioMax.toString());
+    if (params?.precioMax) url.searchParams.append('maxPrice', params.precioMax.toString());
 
     const res = await fetch(url.toString());
     const data = await handleResponse<any[]>(res, 'Error al consultar catálogo de herramientas');
@@ -171,7 +175,7 @@ export const api = {
     };
   },
 
-  async createTool(payload: Partial<Tool>): Promise<Tool> {
+  async createTool(payload: Partial<Tool> & { cantidadTotal?: number }): Promise<Tool> {
     const body = {
       categoriaId: payload.categoriaId,
       nombre: payload.nombre,
@@ -179,7 +183,7 @@ export const api = {
       marca: payload.marca || 'Genérica',
       modelo: payload.modelo || 'Estándar',
       precioDia: payload.precioPorDia,
-      cantidadTotal: 1,
+      cantidadTotal: payload.cantidadTotal && payload.cantidadTotal > 0 ? payload.cantidadTotal : 1,
       estadoPublicacion: payload.estadoPublicacion || 'PUBLICADA',
       ivaPorcentaje: 19.00,
       ivaAplica: true
@@ -194,15 +198,9 @@ export const api = {
   },
 
   async updateTool(id: string | number, payload: Partial<Tool>): Promise<Tool> {
-    const body = {
-      nombre: payload.nombre,
-      descripcion: payload.descripcion,
-      marca: payload.marca,
-      modelo: payload.modelo,
-      precioDia: payload.precioPorDia,
-      cantidadTotal: 1,
-      estadoPublicacion: payload.estadoPublicacion
-    };
+    const body: Record<string, any> = {};
+    if (payload.precioPorDia !== undefined) body.precioDia = payload.precioPorDia;
+    if (payload.estadoPublicacion !== undefined) body.estadoPublicacion = payload.estadoPublicacion;
     const res = await fetch(`${API_BASE}/herramientas/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
@@ -229,10 +227,10 @@ export const api = {
     return data.map(normalizeReservation);
   },
 
-  async createReservation(payload: { herramientaId: string | number; fechaInicio: string; fechaFin: string; notasCliente?: string }): Promise<Reservation> {
+  async createReservation(payload: { herramientaId: string | number; cantidad?: number; fechaInicio: string; fechaFin: string; notasCliente?: string }): Promise<Reservation> {
     const body = {
       herramientaId: payload.herramientaId,
-      cantidad: 1,
+      cantidad: payload.cantidad && payload.cantidad > 0 ? payload.cantidad : 1,
       fechaInicio: payload.fechaInicio,
       fechaFin: payload.fechaFin,
       notasCliente: payload.notasCliente || ''
@@ -263,6 +261,16 @@ export const api = {
     await handleResponse<any>(res, 'Error al rechazar reserva');
   },
 
+  async cancelReservation(id: string | number, motivo?: string): Promise<Reservation> {
+    const res = await fetch(`${API_BASE}/reservas/${id}/cancelar`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ motivo: motivo || 'Cancelada por el cliente titular' })
+    });
+    const data = await handleResponse<any>(res, 'Error al cancelar la reserva');
+    return normalizeReservation(data);
+  },
+
   async dispatchReservation(id: string | number): Promise<void> {
     const res = await fetch(`${API_BASE}/reservas/${id}/entregar`, {
       method: 'PUT',
@@ -271,14 +279,27 @@ export const api = {
     await handleResponse<any>(res, 'Error al entregar equipo');
   },
 
-  async returnReservation(id: string | number, payload: { presentaDanos: boolean; descripcionDano?: string; costoReparacion?: number }): Promise<void> {
+  async requestReturn(id: string | number, payload: { notaCliente?: string }): Promise<void> {
+    const res = await fetch(`${API_BASE}/reservas/${id}/solicitar-devolucion`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({
+        notaCliente: payload.notaCliente || ''
+      })
+    });
+    await handleResponse<any>(res, 'Error al solicitar devolución');
+  },
+
+  async returnReservation(id: string | number, payload: { aceptada?: boolean; presentaDanos: boolean; descripcionDano?: string; costoReparacion?: number; observaciones?: string }): Promise<void> {
     const res = await fetch(`${API_BASE}/reservas/${id}/devolver`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
       body: JSON.stringify({
+        aceptada: payload.aceptada ?? true,
         presentaDanos: payload.presentaDanos,
         descripcionDano: payload.descripcionDano || '',
-        costoReparacion: payload.costoReparacion || 0
+        costoReparacion: payload.costoReparacion || 0,
+        observaciones: payload.observaciones || ''
       })
     });
     await handleResponse<any>(res, 'Error al confirmar devolución');
@@ -432,7 +453,17 @@ export const api = {
     const data = await handleResponse<any>(res, 'Error al cargar métricas del panel');
 
     return {
-      resumen: {
+      resumen: data.resumen ? {
+        totalUsuarios: data.resumen.totalUsuarios ?? 0,
+        totalClientes: data.resumen.totalClientes ?? 0,
+        totalPropietarios: data.resumen.totalPropietarios ?? 0,
+        totalHerramientas: data.resumen.totalHerramientas ?? (data.totalHerramientas || 0),
+        totalReservas: data.resumen.totalReservas ?? 0,
+        reservasActivas: data.resumen.reservasActivas ?? (data.reservasActivas || 0),
+        totalIngresos: typeof data.resumen.totalIngresos === 'number' ? data.resumen.totalIngresos : parseFloat(data.resumen.totalIngresos || data.ingresosTotales || '0'),
+        totalFacturas: data.resumen.totalFacturas ?? 0,
+        reembolsosPendientes: data.resumen.reembolsosPendientes ?? (data.reembolsosPendientes || 0)
+      } : {
         totalUsuarios: 0,
         totalClientes: 0,
         totalPropietarios: 0,
@@ -443,18 +474,34 @@ export const api = {
         totalFacturas: 0,
         reembolsosPendientes: data.reembolsosPendientes || 0
       },
-      disponibilidadInventario: {
+      disponibilidadInventario: data.disponibilidadInventario ? {
+        disponibles: data.disponibilidadInventario.disponibles ?? (data.herramientasDisponibles || 0),
+        alquiladas: data.disponibilidadInventario.alquiladas ?? Math.max(0, (data.totalHerramientas || 0) - (data.herramientasDisponibles || 0)),
+        enMantenimiento: data.disponibilidadInventario.enMantenimiento ?? 0
+      } : {
         disponibles: data.herramientasDisponibles || 0,
-        alquiladas: (data.totalHerramientas || 0) - (data.herramientasDisponibles || 0),
+        alquiladas: Math.max(0, (data.totalHerramientas || 0) - (data.herramientasDisponibles || 0)),
         enMantenimiento: 0
       },
-      masAlquiladas: [],
-      clientesFrecuentes: [],
-      ingresosMensuales: []
+      masAlquiladas: (data.masAlquiladas || []).map((m: any) => ({
+        id: m.id,
+        nombre: m.nombre,
+        vecesAlquilada: m.vecesAlquilada || 0,
+        precioPorDia: typeof m.precioPorDia === 'number' ? m.precioPorDia : parseFloat(m.precioPorDia || '0')
+      })),
+      clientesFrecuentes: (data.clientesFrecuentes || []).map((c: any) => ({
+        nombre: c.nombre,
+        reservas: c.reservas || 0,
+        gasto: typeof c.gasto === 'number' ? c.gasto : parseFloat(c.gasto || '0')
+      })),
+      ingresosMensuales: (data.ingresosMensuales || []).map((i: any) => ({
+        mes: i.mes,
+        ingresos: typeof i.ingresos === 'number' ? i.ingresos : parseFloat(i.ingresos || '0')
+      }))
     };
   },
 
-  // Admin Usuarios
+  // Admin Usuarios CRUD
   async getAdminUsers(): Promise<User[]> {
     const res = await fetch(`${API_BASE}/admin/usuarios`, {
       headers: { ...getAuthHeader() }
@@ -466,11 +513,80 @@ export const api = {
       email: u.email,
       rol: u.rol,
       telefono: u.telefono || '',
-      direccion: '',
-      documentoIdentidad: '',
-      activo: true,
+      direccion: u.direccion || '',
+      documentoIdentidad: u.nit || ('C.C. ' + String(u.id).slice(0, 8)),
+      activo: u.activo ?? true,
       fechaRegistro: new Date().toISOString()
     }));
+  },
+
+  async createAdminUser(payload: {
+    email: string;
+    password: string;
+    nombre: string;
+    apellido: string;
+    rol: string;
+    telefono?: string;
+    razonSocial?: string;
+    nit?: string;
+    direccionFiscal?: string;
+    direccionEntregaDefault?: string;
+  }): Promise<User> {
+    const res = await fetch(`${API_BASE}/admin/usuarios`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify(payload)
+    });
+    const u = await handleResponse<any>(res, 'Error al crear usuario administrativo');
+    return {
+      id: u.id,
+      nombre: `${u.nombre || ''} ${u.apellido || ''}`.trim(),
+      email: u.email,
+      rol: u.rol,
+      telefono: u.telefono || '',
+      direccion: u.direccion || '',
+      documentoIdentidad: u.nit || ('C.C. ' + String(u.id).slice(0, 8)),
+      activo: u.activo ?? true,
+      fechaRegistro: new Date().toISOString()
+    };
+  },
+
+  async updateAdminUser(id: string | number, payload: {
+    nombre: string;
+    apellido: string;
+    telefono?: string;
+    direccion?: string;
+    razonSocial?: string;
+    nit?: string;
+  }): Promise<User> {
+    const res = await fetch(`${API_BASE}/admin/usuarios/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify(payload)
+    });
+    const u = await handleResponse<any>(res, 'Error al actualizar usuario');
+    return {
+      id: u.id,
+      nombre: `${u.nombre || ''} ${u.apellido || ''}`.trim(),
+      email: u.email,
+      rol: u.rol,
+      telefono: u.telefono || '',
+      direccion: u.direccion || '',
+      documentoIdentidad: u.nit || ('C.C. ' + String(u.id).slice(0, 8)),
+      activo: u.activo ?? true,
+      fechaRegistro: new Date().toISOString()
+    };
+  },
+
+  async deleteAdminUser(id: string | number): Promise<void> {
+    const res = await fetch(`${API_BASE}/admin/usuarios/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeader() }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.mensaje || err.message || 'Error al eliminar usuario');
+    }
   },
 
   async toggleUserActive(userId: string | number): Promise<void> {
@@ -482,7 +598,6 @@ export const api = {
   },
 
   async resetDemoData(): Promise<void> {
-    // Modo informativo en backend real
     console.info('Los datos residen en la base de datos real PostgreSQL.');
   }
 };
