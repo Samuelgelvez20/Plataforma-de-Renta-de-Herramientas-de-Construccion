@@ -7,54 +7,44 @@
   },
   "variable": [
     {
-      "key": "base_url",
-      "value": "http://localhost:8080/api/v1",
-      "type": "string"
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1"
     },
     {
-      "key": "token_cliente",
-      "value": "",
-      "type": "string"
+      "key": "admin_jwt",
+      "value": ""
     },
     {
-      "key": "token_propietario",
-      "value": "",
-      "type": "string"
+      "key": "propietario_jwt",
+      "value": ""
     },
     {
-      "key": "token_admin",
-      "value": "",
-      "type": "string"
+      "key": "cliente_jwt",
+      "value": ""
     },
     {
-      "key": "categoria_id",
-      "value": "",
-      "type": "string"
+      "key": "reservaId",
+      "value": ""
     },
     {
-      "key": "herramienta_id",
-      "value": "",
-      "type": "string"
+      "key": "herramientaId",
+      "value": ""
     },
     {
-      "key": "reserva_id",
-      "value": "",
-      "type": "string"
+      "key": "targetUsuarioId",
+      "value": ""
     },
     {
-      "key": "pago_id",
-      "value": "",
-      "type": "string"
+      "key": "reservaAjenaId",
+      "value": ""
     },
     {
-      "key": "factura_id",
-      "value": "",
-      "type": "string"
+      "key": "adminPropioId",
+      "value": ""
     },
     {
-      "key": "reembolso_id",
-      "value": "",
-      "type": "string"
+      "key": "clienteConReservasId",
+      "value": ""
     }
   ],
   "item": [
@@ -448,6 +438,114 @@
               ]
             }
           }
+        },
+        {
+          "name": "Cancelar Reserva (Cliente Titular)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cliente_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/{{reservaId}}/cancelar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "{{reservaId}}",
+                "cancelar"
+              ]
+            },
+            "description": "Cancela la reserva si está en estado cancelable (PENDIENTE o CONFIRMADA) liberando disponibilidad.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Requerimiento de obra pospuesto por cliente\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Rechazar Reserva (Propietario)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{propietario_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/{{reservaId}}/rechazar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "{{reservaId}}",
+                "rechazar"
+              ]
+            },
+            "description": "Rechaza la reserva por parte del propietario especificando el motivo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Equipo en mantenimiento correctivo preventivo\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Solicitar Devolución con Informe (Cliente)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cliente_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/{{reservaId}}/solicitar-devolucion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "{{reservaId}}",
+                "solicitar-devolucion"
+              ]
+            },
+            "description": "Notifica la finalización de uso de equipo y lo pone a disposición de inspección técnica.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notaCliente\": \"Equipo entregado limpio y con tanque lleno en obra principal\"\n}"
+            }
+          }
         }
       ]
     },
@@ -694,6 +792,420 @@
                 "admin",
                 "usuarios"
               ]
+            }
+          }
+        },
+        {
+          "name": "Evolución de Ingresos Mensuales (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/ingresos-mensuales",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "ingresos-mensuales"
+              ]
+            },
+            "description": "Agrupación de ingresos reales por mes en pesos colombianos."
+          }
+        },
+        {
+          "name": "Herramientas Más Alquiladas (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/herramientas-mas-alquiladas?limite=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "herramientas-mas-alquiladas"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Ranking de herramientas con mayor frecuencia de contratación en la plataforma."
+          }
+        },
+        {
+          "name": "Clientes Frecuentes (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/clientes-frecuentes?limite=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "clientes-frecuentes"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Ranking de clientes recurrentes con volumen de reservas y facturación."
+          }
+        },
+        {
+          "name": "Consultar Detalle de Usuario (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/usuarios/{{targetUsuarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "usuarios",
+                "{{targetUsuarioId}}"
+              ]
+            },
+            "description": "Obtiene el perfil completo consolidado de una cuenta de usuario."
+          }
+        },
+        {
+          "name": "Registrar Usuario Administrativo (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "usuarios"
+              ]
+            },
+            "description": "Crea directamente una cuenta de cliente o proveedor con validación de datos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nuevo_contratista@empresa.com\",\n  \"password\": \"PasswordSegura2026!\",\n  \"nombre\": \"Jorge\",\n  \"apellido\": \"Berm\\u00fadez\",\n  \"rol\": \"CLIENTE\",\n  \"telefono\": \"+573155554321\",\n  \"direccionEntregaDefault\": \"Zona Franca Santander Lote 4\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Actualizar Datos de Usuario (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/usuarios/{{targetUsuarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "usuarios",
+                "{{targetUsuarioId}}"
+              ]
+            },
+            "description": "Actualiza información de contacto o fiscal respetando reglas de dominio.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Jorge E.\",\n  \"apellido\": \"Berm\\u00fadez Silva\",\n  \"telefono\": \"+573155559999\",\n  \"direccion\": \"Parque Industrial Bucaramanga Bodega 12\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Suspender o Reactivar Usuario (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/usuarios/{{targetUsuarioId}}/toggle-activo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "usuarios",
+                "{{targetUsuarioId}}",
+                "toggle-activo"
+              ]
+            },
+            "description": "Habilita o suspende una cuenta de usuario impidiendo el acceso a la plataforma."
+          }
+        },
+        {
+          "name": "Eliminar Usuario Seguro (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/usuarios/{{targetUsuarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "usuarios",
+                "{{targetUsuarioId}}"
+              ]
+            },
+            "description": "Elimina la cuenta si no posee registros históricos ni financieros. Si tiene reservas o herramientas, la API responde 400 solicitando suspensión."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Seguridad, Autorización & Casos Negativos",
+      "item": [
+        {
+          "name": "IDOR: Cliente Intenta Cancelar Reserva Ajena (Debe Fallar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cliente_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/{{reservaAjenaId}}/cancelar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "{{reservaAjenaId}}",
+                "cancelar"
+              ]
+            },
+            "description": "Verifica que el backend rechaza la cancelación con código 400/403 por no ser el titular.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Intento de cancelaci\\u00f3n no autorizada\"\n}"
+            }
+          }
+        },
+        {
+          "name": "IDOR: Propietario Intenta Cancelar Reserva Directamente (Debe Fallar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{propietario_jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/{{reservaId}}/cancelar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "{{reservaId}}",
+                "cancelar"
+              ]
+            },
+            "description": "El propietario debe usar 'rechazar', no puede usurpar la cancelación directa del cliente titular.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Intento de cancelaci\\u00f3n por propietario\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin Intenta Desactivar Su Propia Cuenta (Debe Fallar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/usuarios/{{adminPropioId}}/toggle-activo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "usuarios",
+                "{{adminPropioId}}",
+                "toggle-activo"
+              ]
+            },
+            "description": "Regla de seguridad: un administrador no puede bloquearse a sí mismo por error."
+          }
+        },
+        {
+          "name": "Eliminar Usuario con Historial de Reservas (Debe Fallar)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/usuarios/{{clienteConReservasId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "usuarios",
+                "{{clienteConReservasId}}"
+              ]
+            },
+            "description": "Protección de integridad financiera: no se puede borrar un usuario con historial; debe suspenderse."
+          }
+        },
+        {
+          "name": "Registro Público con Rol ADMIN Prohibido (Debe Fallar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Verifica que el registro público rechaza intentos de crear administradores.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"hacker_admin@renta.com\",\n  \"password\": \"Password123!\",\n  \"nombre\": \"Falso\",\n  \"apellido\": \"Admin\",\n  \"rol\": \"ADMIN\"\n}"
             }
           }
         }

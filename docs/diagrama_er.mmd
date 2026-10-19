@@ -1,0 +1,153 @@
+erDiagram
+    CONFIGURACION_FISCAL {
+        varchar clave PK
+        varchar valor
+        varchar descripcion
+        timestamptz actualizado_en
+    }
+
+    USUARIO ||--o| CLIENTE : "perfil cliente (1:1)"
+    USUARIO ||--o| PROPIETARIO : "perfil propietario (1:1)"
+    CATEGORIA ||--o{ HERRAMIENTA : "clasifica (1:N)"
+    PROPIETARIO ||--o{ HERRAMIENTA : "posee (1:N)"
+    CLIENTE ||--o{ RESERVA : "solicita (1:N)"
+    RESERVA ||--|{ DETALLE_RESERVA : "contiene (1:N)"
+    HERRAMIENTA ||--o{ DETALLE_RESERVA : "incluida en (1:N)"
+    RESERVA ||--o{ PAGO : "asociada a (1:N)"
+    RESERVA ||--o{ FACTURA : "genera (1:N)"
+    DETALLE_RESERVA ||--o{ REPORTE_DANO : "registra dano (1:N)"
+    PAGO ||--o| FACTURA : "soporta nota credito (1:1)"
+    FACTURA ||--o| FACTURA : "anula factura original (1:1)"
+    PAGO ||--o| PAGO : "reembolso a pago original (1:1)"
+
+    USUARIO {
+        uuid id PK
+        varchar email UK
+        varchar password_hash
+        user_rol rol
+        varchar nombre
+        varchar apellido
+        varchar telefono
+        boolean activo
+        timestamptz creado_en
+        timestamptz actualizado_en
+    }
+
+    CLIENTE {
+        uuid usuario_id PK,FK
+        varchar direccion_entrega_default
+        jsonb datos_facturacion
+    }
+
+    PROPIETARIO {
+        uuid usuario_id PK,FK
+        varchar nit UK
+        varchar razon_social
+        varchar direccion_fiscal
+        varchar telefono_contacto
+        varchar regimen_tributario
+        varchar municipio
+        varchar departamento
+        timestamptz verificado_en
+    }
+
+    CATEGORIA {
+        uuid id PK
+        varchar nombre UK
+        text descripcion
+        boolean activo
+        timestamptz creado_en
+    }
+
+    HERRAMIENTA {
+        uuid id PK
+        uuid categoria_id FK
+        uuid propietario_id FK
+        varchar nombre
+        text descripcion
+        numeric precio_dia
+        numeric valor_reposicion
+        integer cantidad_total
+        integer cantidad_disponible
+        varchar marca
+        varchar modelo
+        jsonb especificaciones
+        text_array imagenes_url
+        herramienta_pub_estado estado_publicacion
+        timestamptz creado_en
+        timestamptz actualizado_en
+    }
+
+    RESERVA {
+        uuid id PK
+        uuid cliente_id FK
+        reserva_estado estado
+        date fecha_inicio
+        date fecha_fin
+        timestamptz fecha_creacion
+        timestamptz fecha_confirmacion
+        timestamptz fecha_expiracion_pendiente
+        timestamptz fecha_cancelacion
+        text motivo_cancelacion
+        uuid cancelado_por_usuario_id FK
+        boolean solicitud_devolucion
+        varchar estado_devolucion
+        text nota_devolucion_cliente
+        numeric costo_reparacion
+        text descripcion_dano
+        text observacion_propietario
+        timestamptz fecha_devolucion
+        timestamptz actualizado_en
+    }
+
+    DETALLE_RESERVA {
+        uuid id PK
+        uuid reserva_id FK
+        uuid herramienta_id FK
+        integer cantidad
+        numeric precio_dia_acordado
+        numeric subtotal
+        numeric iva
+        numeric total
+    }
+
+    PAGO {
+        uuid id PK
+        uuid reserva_id FK
+        uuid pago_original_id FK
+        pago_estado estado
+        varchar proveedor_pago
+        varchar transaccion_id UK
+        varchar idempotency_key UK
+        numeric monto
+        char moneda
+        jsonb metadatos
+        timestamptz fecha_creacion
+        timestamptz actualizado_en
+    }
+
+    FACTURA {
+        uuid id PK
+        uuid reserva_id FK
+        varchar numero_factura UK
+        factura_tipo tipo
+        uuid factura_original_id FK
+        uuid pago_reembolso_id FK
+        numeric subtotal
+        numeric iva
+        numeric total
+        bytea pdf_bytes
+        jsonb datos_emisor
+        jsonb datos_receptor
+        timestamptz fecha_emision
+    }
+
+    REPORTE_DANO {
+        uuid id PK
+        uuid detalle_reserva_id FK
+        text descripcion
+        dano_severidad severidad
+        numeric costo_reparacion
+        text_array fotos_url
+        timestamptz fecha_reporte
+    }

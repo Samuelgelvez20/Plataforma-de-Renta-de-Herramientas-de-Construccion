@@ -98,6 +98,11 @@ El esquema relacional fue diseñado específicamente para PostgreSQL 16 con tipo
 
 ### Diagrama Entidad-Relación (ER)
 
+> **Exportación Visual Gráfica Oficial:** El diagrama físico relacional se encuentra exportado en formato vectorial de alta resolución en [`docs/diagrama_er.svg`](docs/diagrama_er.svg).  
+> **Archivo Fuente Editable:** Disponible en [`docs/diagrama_er.mmd`](docs/diagrama_er.mmd).
+
+![Diagrama Entidad-Relación](docs/diagrama_er.svg)
+
 ```mermaid
 erDiagram
     USUARIO ||--o| CLIENTE : "perfil cliente"
@@ -258,9 +263,13 @@ El backend se configura mediante variables de entorno estándar. No se versionan
 | `JWT_SECRET` | Clave secreta para firma HMAC de tokens (mínimo 32 bytes) | `clave-secreta-de-prueba-de-32-bytes-minimo-para-testing` |
 | `VITE_API_URL` | URL base consumida por el frontend | `http://localhost:8080/api/v1` |
 
+> **Aislamiento de Puertos:** PostgreSQL está configurado en el puerto `5439` para evitar colisiones con instancias locales estándar en `5432`. El frontend soporta indistintamente los puertos `5173` y `5174` gracias a la política CORS para orígenes locales (`http://localhost:*`).
+
 ---
 
-## 7. Instrucciones de Ejecución
+## 7. Instrucciones de Ejecución y Conexión
+
+> Consulta también la guía de inicio detallada en [`docs/GUIA_INICIO_Y_CONEXIONES.md`](docs/GUIA_INICIO_Y_CONEXIONES.md).
 
 ### Prerrequisitos
 - **Java:** OpenJDK 21 o superior.
@@ -268,33 +277,96 @@ El backend se configura mediante variables de entorno estándar. No se versionan
 - **Node.js:** Versión 20+ y `npm`.
 - **PostgreSQL / Docker:** Contenedor PostgreSQL 16 activo.
 
-### 1. Iniciar Base de Datos (Docker)
+### 1. Iniciar Base de Datos Aislada (Docker)
 ```bash
-docker run -d --name plataforma_renta_pg -p 5439:5432 -e POSTGRES_DB=plataforma_renta -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres postgres:16-alpine
+# Iniciar contenedor existente
+docker start plataforma_renta_isolated_pg
+
+# O crearlo desde cero si no existe:
+docker run -d --name plataforma_renta_isolated_pg \
+  -e POSTGRES_DB=plataforma_renta \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5439:5432 \
+  postgres:16-alpine
 ```
 
-### 2. Compilar y Ejecutar el Backend (Spring Boot)
+### 2. Conexión desde Clientes SQL (DBeaver, DataGrip, pgAdmin)
+Para visualizar o consultar las tablas relacionales:
+- **Tipo:** PostgreSQL
+- **Host:** `localhost` (o `127.0.0.1`)
+- **Puerto:** `5439` *(no usar 5432)*
+- **Base de Datos:** `plataforma_renta`
+- **Usuario:** `postgres`
+- **Contraseña:** `postgres`
+- **Esquema:** `public` (12 tablas del dominio: `usuario`, `cliente`, `propietario`, `categoria`, `herramienta`, `reserva`, `detalle_reserva`, `pago`, `factura`, `configuracion_fiscal`, `reporte_dano`, `flyway_schema_history`).
+
+### 3. Procedimiento de Despliegue y Arquitectura Tomcat
+
+La plataforma está diseñada según los estándares modernos de arquitectura de microservicios y despliegue en la nube:
+
+1. **Despliegue Predeterminado (Tomcat Embebido 10.1):**  
+   Empaquetado en un archivo JAR autocontenido y ejecutable mediante `spring-boot-starter-tomcat`. Es la modalidad estándar de producción, pues elimina dependencias del servidor anfitrión, garantiza la compatibilidad de versiones de servlet (Jakarta EE 10 / Servlet 6.0) y facilita la contenerización en Docker / Kubernetes.
+   ```bash
+   mvn clean package -DskipTests
+   java -jar platform/target/platform-0.1.0-SNAPSHOT.jar
+   ```
+
+2. **Despliegue como WAR en Servidor Tomcat Externo (Opcional):**  
+   Si la infraestructura educativa o corporativa exige desplegar sobre una instancia existente de Apache Tomcat (versión 10.1 o superior compatible con Java 21 y Jakarta EE):
+   - Cambiar en `platform/pom.xml`: `<packaging>war</packaging>`.
+   - Marcar la dependencia de Tomcat como provista:
+     ```xml
+     <dependency>
+         <groupId>org.springframework.boot</groupId>
+         <artifactId>spring-boot-starter-tomcat</artifactId>
+         <scope>provided</scope>
+     </dependency>
+     ```
+   - La clase principal `PlataformaRentaApplication` hereda de `SpringBootServletInitializer` y sobrescribe `configure(SpringApplicationBuilder application)`.
+   - Copiar el archivo `.war` generado en el directorio `webapps/` de Tomcat.
+
+### 4. Compilar y Ejecutar el Backend (Spring Boot)
 ```bash
 # Compilar todo el proyecto Maven multimódulo
 mvn clean package -DskipTests
 
-# Ejecutar la aplicación Spring Boot
-DB_URL="jdbc:postgresql://localhost:5439/plataforma_renta" DB_USERNAME="postgres" DB_PASSWORD="postgres" JWT_SECRET="clave-secreta-de-prueba-de-32-bytes-minimo-para-testing" SERVER_PORT="8080" java -jar platform/target/platform-0.1.0-SNAPSHOT.jar
+# Ejecutar la aplicación Spring Boot con sus variables de entorno
+DB_URL="jdbc:postgresql://localhost:5439/plataforma_renta" \
+DB_USERNAME="postgres" \
+DB_PASSWORD="postgres" \
+JWT_SECRET="clave-secreta-de-prueba-de-32-bytes-minimo-para-testing" \
+SERVER_PORT="8080" \
+java -jar platform/target/platform-0.1.0-SNAPSHOT.jar
 ```
-
 Al iniciar, Flyway aplicará automáticamente las migraciones `V1` y `V2` inicializando el esquema y las categorías semilla.
 
-### 3. Iniciar el Frontend (React + Vite)
+### 4. Iniciar el Frontend (React 19 + TypeScript + Vite)
 ```bash
 cd frontend
 npm install
-npm run dev
+
+# Iniciar servidor de desarrollo en puerto 5174 (evita conflicto con 5173 si está ocupado)
+npm run dev -- --port 5174
 ```
-La interfaz estará disponible en `http://localhost:5173`.
+La interfaz estará disponible en: **`http://localhost:5174`** (o `http://localhost:5173`).
 
 ---
 
-## 8. Documentación de API y Colección Postman
+## 8. Cuentas de Demostración para Evaluación
+
+Para facilitar los ensayos y la verificación funcional sin necesidad de registrar datos manualmente, la base de datos local cuenta con:
+
+| Rol | Correo Electrónico | Contraseña | Datos y Funcionalidades |
+| :--- | :--- | :--- | :--- |
+| **PROPIETARIO** | `contacto@maquinariavalle.com` | `Password123!` | Cuenta con herramientas publicadas, gestión de inventario, aprobación de reservas y recepción técnica de equipos. |
+| **CLIENTE** | `compras@colpatriaconstrucciones.com` | `Password123!` | Cuenta empresarial con historial de reservas, flujo de pago simulado y descarga de facturas en PDF. |
+
+> **Registro de Nuevos Usuarios:** Puedes crear usuarios nuevos con rol `CLIENTE` o `PROPIETARIO` desde la pantalla de Registro o mediante la API. El rol `ADMIN` está protegido contra registro público por reglas de seguridad.
+
+---
+
+## 9. Documentación de API y Colección Postman
 
 ### Swagger / OpenAPI 3.0
 Con el backend en ejecución, acceda a la documentación interactiva y especificación OpenAPI en:
@@ -312,7 +384,7 @@ En la carpeta [`docs/postman_collection.json`](docs/postman_collection.json) se 
 
 ---
 
-## 9. Pruebas Automatizadas
+## 10. Pruebas Automatizadas
 
 El proyecto cuenta con un conjunto integral de pruebas automatizadas:
 
@@ -334,7 +406,7 @@ mvn test
 
 ---
 
-## 10. Aviso Legal y Alcance Normativo
+## 11. Aviso Legal y Alcance Normativo
 
 > **IMPORTANTE — ALCANCE DE LA FACTURACIÓN DEL PROYECTO:**
 > Los documentos PDF de facturas y notas de crédito emitidos por esta plataforma constituyen **comprobantes comerciales y tributarios simulados con propósitos académicos y de demostración funcional**.
