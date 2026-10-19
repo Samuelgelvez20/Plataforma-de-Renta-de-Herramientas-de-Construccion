@@ -143,4 +143,57 @@ class PublicRegistrationRoleSecurityTest {
 
         verifyNoInteractions(authService);
     }
+
+    @Test
+    @DisplayName("Registro de cliente con nombre y apellido válidos invoca AuthService correctamente")
+    void registroClienteValidoInvocaService() {
+        RegisterRequest req = new RegisterRequest(
+                "cliente.valido@test.com", "Password123!", "Juan", "Perez",
+                "CLIENTE", "3001234567", null, null, null, "Calle 100 # 15-20"
+        );
+
+        Usuario mockUser = new Usuario(
+                UUID.randomUUID(), Email.of(req.email()), "hash", UserRol.CLIENTE,
+                req.nombre(), req.apellido(), req.telefono(), Instant.now(), Instant.now()
+        );
+        when(authService.register(any())).thenReturn(new AuthResult("jwt-token-123", mockUser));
+
+        ResponseEntity<AuthResponse> res = authController.register(req);
+
+        assertThat(res.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(res.getBody()).isNotNull();
+        assertThat(res.getBody().usuario().nombre()).isEqualTo("Juan");
+        assertThat(res.getBody().usuario().apellido()).isEqualTo("Perez");
+    }
+
+    @Test
+    @DisplayName("Registro de propietario con NIT válido (DV 8 verificado por módulo 11) pasa al servicio")
+    void registroPropietarioValidoInvocaService() {
+        RegisterRequest req = new RegisterRequest(
+                "propietario.valido@test.com", "Password123!", "Carlos", "Gomez",
+                "PROPIETARIO", "3109876543", "Maquinaria y Equipos SAS", "900123456-8", "Calle 26 # 68-35", null
+        );
+
+        Usuario mockUser = new Usuario(
+                UUID.randomUUID(), Email.of(req.email()), "hash", UserRol.PROPIETARIO,
+                req.nombre(), req.apellido(), req.telefono(), Instant.now(), Instant.now()
+        );
+        when(authService.register(any())).thenReturn(new AuthResult("jwt-token-456", mockUser));
+
+        ResponseEntity<AuthResponse> res = authController.register(req);
+
+        assertThat(res.getStatusCode().is2xxSuccessful()).isTrue();
+        ArgumentCaptor<AuthService.RegisterUserCommand> captor = ArgumentCaptor.forClass(AuthService.RegisterUserCommand.class);
+        verify(authService).register(captor.capture());
+        assertThat(captor.getValue().nit()).isEqualTo("900123456-8");
+        assertThat(captor.getValue().razonSocial()).isEqualTo("Maquinaria y Equipos SAS");
+    }
+
+    @Test
+    @DisplayName("NIT con dígito de verificación inválido es rechazado por la lógica de dominio")
+    void nitConDvInvalidoEsRechazadoPorDominio() {
+        // Para 900123456 el DV válido calculado por módulo 11 es 8, por tanto 900123456-1 debe fallar
+        org.junit.jupiter.api.Assertions.assertFalse(com.plataforma.renta.domain.value.Nit.esValido("900123456-1"));
+        org.junit.jupiter.api.Assertions.assertTrue(com.plataforma.renta.domain.value.Nit.esValido("900123456-8"));
+    }
 }

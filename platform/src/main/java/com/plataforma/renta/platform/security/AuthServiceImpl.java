@@ -9,6 +9,7 @@ import com.plataforma.renta.domain.model.UserRol;
 import com.plataforma.renta.domain.model.Usuario;
 import com.plataforma.renta.domain.port.out.ClienteRepository;
 import com.plataforma.renta.domain.port.out.PropietarioRepository;
+import com.plataforma.renta.domain.port.out.ReservaRepository;
 import com.plataforma.renta.domain.port.out.UsuarioRepository;
 import com.plataforma.renta.domain.value.Email;
 import com.plataforma.renta.domain.value.Nit;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -35,6 +37,7 @@ public class AuthServiceImpl implements AuthService {
     private final UsuarioRepository usuarioRepository;
     private final PropietarioRepository propietarioRepository;
     private final ClienteRepository clienteRepository;
+    private final ReservaRepository reservaRepository;
 
     public AuthServiceImpl(AuthenticationManager authenticationManager,
                            PasswordEncoder passwordEncoder,
@@ -42,7 +45,8 @@ public class AuthServiceImpl implements AuthService {
                            CustomUserDetailsService userDetailsService,
                            UsuarioRepository usuarioRepository,
                            PropietarioRepository propietarioRepository,
-                           ClienteRepository clienteRepository) {
+                           ClienteRepository clienteRepository,
+                           ReservaRepository reservaRepository) {
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
@@ -50,6 +54,7 @@ public class AuthServiceImpl implements AuthService {
         this.usuarioRepository = usuarioRepository;
         this.propietarioRepository = propietarioRepository;
         this.clienteRepository = clienteRepository;
+        this.reservaRepository = reservaRepository;
     }
 
     @Override
@@ -58,12 +63,18 @@ public class AuthServiceImpl implements AuthService {
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, password)
             );
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            throw new org.springframework.security.authentication.DisabledException("La cuenta de usuario se encuentra suspendida o inactiva");
         } catch (BadCredentialsException e) {
             throw new OperacionInvalidaException("Credenciales inválidas: correo o contraseña incorrectos");
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new EntidadNoEncontradaException("Usuario no encontrado: " + email));
+
+        if (!usuario.isActivo()) {
+            throw new org.springframework.security.authentication.DisabledException("La cuenta de usuario se encuentra suspendida o inactiva");
+        }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
         String token = jwtUtil.generateToken(userDetails);
@@ -93,6 +104,7 @@ public class AuthServiceImpl implements AuthService {
                 cmd.nombre(),
                 cmd.apellido(),
                 cmd.telefono(),
+                true,
                 ahora,
                 ahora
         );
@@ -100,7 +112,10 @@ public class AuthServiceImpl implements AuthService {
 
         // Crear perfil correspondiente
         if (usuario.getRol() == UserRol.PROPIETARIO) {
-            String nitStr = cmd.nit() != null && !cmd.nit().isBlank() ? cmd.nit() : "900123456-1";
+            String nitStr = cmd.nit() != null && !cmd.nit().isBlank() ? cmd.nit() : "901500000-4";
+            if (propietarioRepository.findByNit(nitStr).isPresent()) {
+                throw new OperacionInvalidaException("El NIT '" + nitStr + "' ya se encuentra registrado por otra empresa");
+            }
             Propietario propietario = new Propietario(
                     usuarioId,
                     Email.of(cmd.email()),
@@ -151,8 +166,123 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public Usuario toggleActivo(UUID id) {
-        // En esquema actual usuario no tiene flag activo, se retorna el usuario existente
-        return obtenerUsuarioPorId(id);
+    @Transactional
+    public Usuario toggleActivo(UUID id, UUID actorId) {
+        Usuario usuario = obtenerUsuarioPorId(id);
+
+        if (actorId != null && actorId.equals(id)) {
+            throw new OperacionInvalidaException("Un administrador no puede desactivar su propia cuenta");
+        }
+
+        if (usuario.getRol() == UserRol.ADMIN && usuario.isActivo()) {
+            long adminsActivos = usuarioRepository.findByRol(UserRol.ADMIN).stream()
+                    .filter(Usuario::isActivo)
+                    .count();
+            if (adminsActivos <= 1) {
+                throw new OperacionInvalidaException("No se puede desactivar el único administrador activo del sistema");
+            }
+        }
+
+        Usuario modificado = usuario.conActivo(!usuario.isActivo());
+        return usuarioRepository.save(modificado);
+    }
+
+    @Override
+    @Transactional
+    public Usuario actualizarUsuario(UUID id, String nombre, String apellido, String telefono, String direccion, String razonSocial, String nit) {
+        Usuario usuario = obtenerUsuarioPorId(id);
+        Usuario modificado = usuario.conDatos(nombre, apellido, telefono);
+        modificado = usuarioRepository.save(modificado);
+
+        if (usuario.getRol() == UserRol.PROPIETARIO) {
+            Optional<Propietario> propOpt = propietarioRepository.findById(id);
+            if (propOpt.isPresent()) {
+                Propietario p = propOpt.get();
+                Nit nuevoNit = p.getNit();
+                if (nit != null && !nit.isBlank() && !nit.equals(p.getNit().getValor())) {
+                    if (propietarioRepository.findByNit(nit).isPresent()) {
+                        throw new OperacionInvalidaException("El NIT '" + nit + "' ya se encuentra registrado por otra empresa");
+                    }
+                    nuevoNit = Nit.of(nit);
+                }
+                Propietario actualizado = new Propietario(
+                        p.getId(),
+                        p.getEmail(),
+                        nuevoNit,
+                        razonSocial != null && !razonSocial.isBlank() ? razonSocial : p.getRazonSocial(),
+                        direccion != null && !direccion.isBlank() ? direccion : p.getDireccionFiscal(),
+                        telefono != null && !telefono.isBlank() ? telefono : p.getTelefonoContacto(),
+                        p.getRegimen(),
+                        p.getMunicipio(),
+                        p.getDepartamento(),
+                        p.getVerificadoEn()
+                );
+                propietarioRepository.save(actualizado);
+            }
+        } else if (usuario.getRol() == UserRol.CLIENTE) {
+            Optional<Cliente> cliOpt = clienteRepository.findById(id);
+            if (cliOpt.isPresent()) {
+                Cliente c = cliOpt.get();
+                Cliente actualizado = new Cliente(
+                        c.getId(),
+                        c.getEmail(),
+                        nombre,
+                        apellido,
+                        telefono,
+                        direccion != null && !direccion.isBlank() ? direccion : c.getDireccionEntregaDefault(),
+                        c.getDatosFacturacion()
+                );
+                clienteRepository.save(actualizado);
+            }
+        }
+
+        return modificado;
+    }
+
+    @Override
+    @Transactional
+    public void eliminarUsuario(UUID id, UUID actorId) {
+        Usuario usuario = obtenerUsuarioPorId(id);
+
+        if (actorId != null && actorId.equals(id)) {
+            throw new OperacionInvalidaException("Un administrador no puede eliminar su propia cuenta");
+        }
+
+        if (usuario.getRol() == UserRol.ADMIN) {
+            long adminsActivos = usuarioRepository.findByRol(UserRol.ADMIN).stream()
+                    .filter(Usuario::isActivo)
+                    .count();
+            if (adminsActivos <= 1) {
+                throw new OperacionInvalidaException("No se puede eliminar el único administrador activo del sistema");
+            }
+        }
+
+        if (usuario.getRol() == UserRol.PROPIETARIO) {
+            var herramientas = propietarioRepository.findHerramientaIdsByPropietarioId(id);
+            if (!herramientas.isEmpty()) {
+                throw new OperacionInvalidaException("No es posible eliminar el proveedor porque posee " + herramientas.size() +
+                        " herramientas registradas en la plataforma. Utilice la desactivación de cuenta en su lugar.");
+            }
+        }
+
+        if (usuario.getRol() == UserRol.CLIENTE) {
+            var reservas = reservaRepository.findByClienteId(id);
+            if (!reservas.isEmpty()) {
+                throw new OperacionInvalidaException("No es posible eliminar el cliente porque posee " + reservas.size() +
+                        " reservas asociadas en el historial. Utilice la desactivación de cuenta en su lugar.");
+            }
+        }
+
+        usuarioRepository.deleteById(id);
+    }
+
+    @Override
+    public Propietario obtenerPropietarioPorUsuarioId(UUID usuarioId) {
+        return propietarioRepository.findById(usuarioId).orElse(null);
+    }
+
+    @Override
+    public Cliente obtenerClientePorUsuarioId(UUID usuarioId) {
+        return clienteRepository.findById(usuarioId).orElse(null);
     }
 }
