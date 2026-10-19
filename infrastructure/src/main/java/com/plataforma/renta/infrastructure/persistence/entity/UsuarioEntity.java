@@ -32,6 +32,9 @@ public class UsuarioEntity {
     @Column(name = "telefono", length = 20)
     private String telefono;
 
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     private Instant creadoEn;
 
@@ -47,7 +50,7 @@ public class UsuarioEntity {
     public UsuarioEntity() {}
 
     public UsuarioEntity(UUID id, String email, String passwordHash, UserRol rol,
-                         String nombre, String apellido, String telefono,
+                         String nombre, String apellido, String telefono, boolean activo,
                          Instant creadoEn, Instant actualizadoEn) {
         this.id = id;
         this.email = email;
@@ -56,8 +59,15 @@ public class UsuarioEntity {
         this.nombre = nombre;
         this.apellido = apellido;
         this.telefono = telefono;
+        this.activo = activo;
         this.creadoEn = creadoEn;
         this.actualizadoEn = actualizadoEn;
+    }
+
+    public UsuarioEntity(UUID id, String email, String passwordHash, UserRol rol,
+                         String nombre, String apellido, String telefono,
+                         Instant creadoEn, Instant actualizadoEn) {
+        this(id, email, passwordHash, rol, nombre, apellido, telefono, true, creadoEn, actualizadoEn);
     }
 
     @PrePersist
@@ -79,6 +89,7 @@ public class UsuarioEntity {
     public String getNombre() { return nombre; }
     public String getApellido() { return apellido; }
     public String getTelefono() { return telefono; }
+    public boolean isActivo() { return activo; }
     public Instant getCreadoEn() { return creadoEn; }
     public Instant getActualizadoEn() { return actualizadoEn; }
     public PropietarioEntity getPropietario() { return propietario; }
@@ -90,6 +101,7 @@ public class UsuarioEntity {
     public void setNombre(String nombre) { this.nombre = nombre; }
     public void setApellido(String apellido) { this.apellido = apellido; }
     public void setTelefono(String telefono) { this.telefono = telefono; }
+    public void setActivo(boolean activo) { this.activo = activo; }
     public void setPropietario(PropietarioEntity propietario) { this.propietario = propietario; }
     public void setCliente(ClienteEntity cliente) { this.cliente = cliente; }
 }

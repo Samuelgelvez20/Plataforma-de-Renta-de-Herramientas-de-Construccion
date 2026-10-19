@@ -6,9 +6,6 @@ import com.plataforma.renta.domain.value.Email;
 import com.plataforma.renta.infrastructure.persistence.entity.UsuarioEntity;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
-import java.util.UUID;
-
 @Component
 public class UsuarioMapper {
 
@@ -22,6 +19,7 @@ public class UsuarioMapper {
                 entity.getNombre(),
                 entity.getApellido(),
                 entity.getTelefono(),
+                entity.isActivo(),
                 entity.getCreadoEn(),
                 entity.getActualizadoEn()
         );
@@ -37,6 +35,7 @@ public class UsuarioMapper {
                 domain.getNombre(),
                 domain.getApellido(),
                 domain.getTelefono(),
+                domain.isActivo(),
                 domain.getCreadoEn(),
                 domain.getActualizadoEn()
         );

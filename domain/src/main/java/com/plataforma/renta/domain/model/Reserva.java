@@ -23,6 +23,14 @@ public final class Reserva {
     private UUID canceladoPorUsuarioId;
     private Instant actualizadoEn;
     private final List<DetalleReserva> detalles = new ArrayList<>();
+    private boolean solicitudDevolucion = false;
+    private String estadoDevolucion;
+    private String notaDevolucionCliente;
+    private Dinero costoReparacion = Dinero.cero();
+    private String descripcionDano;
+    private String observacionPropietario;
+    private Instant fechaDevolucion;
+
 
     public Reserva(UUID id, UUID clienteId, ReservaEstado estado,
                    LocalDate fechaInicio, LocalDate fechaFin,
@@ -142,4 +150,33 @@ public final class Reserva {
     public UUID getCanceladoPorUsuarioId() { return canceladoPorUsuarioId; }
     public Instant getActualizadoEn() { return actualizadoEn; }
     public List<DetalleReserva> getDetalles() { return List.copyOf(detalles); }
+    public boolean isSolicitudDevolucion() { return solicitudDevolucion; }
+    public void setSolicitudDevolucion(boolean solicitudDevolucion) { this.solicitudDevolucion = solicitudDevolucion; }
+
+    public String getEstadoDevolucion() { return estadoDevolucion; }
+    public void setEstadoDevolucion(String estadoDevolucion) { this.estadoDevolucion = estadoDevolucion; }
+
+    public String getNotaDevolucionCliente() { return notaDevolucionCliente; }
+    public void setNotaDevolucionCliente(String notaDevolucionCliente) { this.notaDevolucionCliente = notaDevolucionCliente; }
+
+    public Dinero getCostoReparacion() { return costoReparacion != null ? costoReparacion : Dinero.cero(); }
+    public void setCostoReparacion(Dinero costoReparacion) { this.costoReparacion = costoReparacion; }
+
+    public String getDescripcionDano() { return descripcionDano; }
+    public void setDescripcionDano(String descripcionDano) { this.descripcionDano = descripcionDano; }
+
+    public String getObservacionPropietario() { return observacionPropietario; }
+    public void setObservacionPropietario(String observacionPropietario) { this.observacionPropietario = observacionPropietario; }
+
+    public Instant getFechaDevolucion() { return fechaDevolucion; }
+    public void setFechaDevolucion(Instant fechaDevolucion) { this.fechaDevolucion = fechaDevolucion; }
+
+    public void solicitarDevolucion(String notaCliente) {
+        if (estado != ReservaEstado.EN_CURSO) throw new IllegalStateException("Solo reservas EN_CURSO pueden solicitar devolución");
+        this.solicitudDevolucion = true;
+        this.estadoDevolucion = "PENDIENTE_REVISION";
+        this.notaDevolucionCliente = notaCliente;
+        this.actualizadoEn = Instant.now();
+    }
+
 }

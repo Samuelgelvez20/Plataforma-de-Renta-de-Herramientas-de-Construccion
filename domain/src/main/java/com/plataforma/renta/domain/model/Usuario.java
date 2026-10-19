@@ -14,12 +14,13 @@ public final class Usuario {
     private final String nombre;
     private final String apellido;
     private final String telefono;
+    private final boolean activo;
     private final Instant creadoEn;
     private final Instant actualizadoEn;
 
     public Usuario(UUID id, Email email, String passwordHash, UserRol rol,
                    String nombre, String apellido, String telefono,
-                   Instant creadoEn, Instant actualizadoEn) {
+                   boolean activo, Instant creadoEn, Instant actualizadoEn) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
@@ -27,8 +28,15 @@ public final class Usuario {
         this.nombre = nombre;
         this.apellido = apellido;
         this.telefono = telefono;
+        this.activo = activo;
         this.creadoEn = creadoEn;
         this.actualizadoEn = actualizadoEn;
+    }
+
+    public Usuario(UUID id, Email email, String passwordHash, UserRol rol,
+                   String nombre, String apellido, String telefono,
+                   Instant creadoEn, Instant actualizadoEn) {
+        this(id, email, passwordHash, rol, nombre, apellido, telefono, true, creadoEn, actualizadoEn);
     }
 
     public UUID getId() { return id; }
@@ -38,6 +46,15 @@ public final class Usuario {
     public String getNombre() { return nombre; }
     public String getApellido() { return apellido; }
     public String getTelefono() { return telefono; }
+    public boolean isActivo() { return activo; }
     public Instant getCreadoEn() { return creadoEn; }
     public Instant getActualizadoEn() { return actualizadoEn; }
+
+    public Usuario conActivo(boolean nuevoActivo) {
+        return new Usuario(id, email, passwordHash, rol, nombre, apellido, telefono, nuevoActivo, creadoEn, Instant.now());
+    }
+
+    public Usuario conDatos(String nombre, String apellido, String telefono) {
+        return new Usuario(id, email, passwordHash, rol, nombre, apellido, telefono, activo, creadoEn, Instant.now());
+    }
 }

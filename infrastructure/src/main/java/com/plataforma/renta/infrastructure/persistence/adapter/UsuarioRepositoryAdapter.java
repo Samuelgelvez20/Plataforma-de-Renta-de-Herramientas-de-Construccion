@@ -59,4 +59,9 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        springRepo.deleteById(id);
+    }
 }

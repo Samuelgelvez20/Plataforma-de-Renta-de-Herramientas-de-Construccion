@@ -39,6 +39,9 @@ public class HerramientaEntity {
     @Column(name = "cantidad_total", nullable = false)
     private Integer cantidadTotal;
 
+    @Column(name = "cantidad_disponible")
+    private Integer cantidadDisponible;
+
     @Enumerated(EnumType.STRING)
     @org.hibernate.annotations.JdbcType(com.plataforma.renta.infrastructure.persistence.type.CustomPostgreSQLEnumJdbcType.class)
     @Column(name = "estado_publicacion", nullable = false, columnDefinition = "herramienta_pub_estado")
@@ -86,6 +89,7 @@ public class HerramientaEntity {
         if (creadoEn == null) creadoEn = Instant.now();
         if (actualizadoEn == null) actualizadoEn = Instant.now();
         if (estadoPublicacion == null) estadoPublicacion = HerramientaPubEstado.PUBLICADA;
+        if (cantidadDisponible == null) cantidadDisponible = cantidadTotal;
         if (ivaPorcentaje == null) ivaPorcentaje = new BigDecimal("19.00");
         if (ivaAplica == null) ivaAplica = true;
     }
@@ -104,6 +108,9 @@ public class HerramientaEntity {
     public String getModelo() { return modelo; }
     public BigDecimal getPrecioDia() { return precioDia; }
     public Integer getCantidadTotal() { return cantidadTotal; }
+    public Integer getCantidadDisponible() { return cantidadDisponible != null ? cantidadDisponible : cantidadTotal; }
+    public void setCantidadDisponible(Integer cantidadDisponible) { this.cantidadDisponible = cantidadDisponible; }
+
     public HerramientaPubEstado getEstadoPublicacion() { return estadoPublicacion; }
     public BigDecimal getIvaPorcentaje() { return ivaPorcentaje; }
     public Boolean getIvaAplica() { return ivaAplica; }

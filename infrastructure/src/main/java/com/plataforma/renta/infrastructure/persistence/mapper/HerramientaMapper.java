@@ -13,8 +13,9 @@ import java.util.UUID;
 @Component
 public class HerramientaMapper {
 
-    public Herramienta toDomain(HerramientaEntity entity) {
+        public Herramienta toDomain(HerramientaEntity entity) {
         if (entity == null) return null;
+        int disp = entity.getCantidadDisponible() != null ? entity.getCantidadDisponible() : entity.getCantidadTotal();
         return new Herramienta(
                 entity.getId(),
                 entity.getCategoria().getId(),
@@ -25,6 +26,7 @@ public class HerramientaMapper {
                 entity.getModelo(),
                 Dinero.cop(entity.getPrecioDia()),
                 entity.getCantidadTotal(),
+                disp,
                 toDomainEstado(entity.getEstadoPublicacion()),
                 entity.getIvaPorcentaje(),
                 entity.getIvaAplica(),
@@ -33,7 +35,7 @@ public class HerramientaMapper {
         );
     }
 
-    public HerramientaEntity toEntity(Herramienta domain) {
+        public HerramientaEntity toEntity(Herramienta domain) {
         if (domain == null) return null;
         HerramientaEntity entity = new HerramientaEntity(
                 domain.getId(),
@@ -51,6 +53,7 @@ public class HerramientaMapper {
                 domain.getCreadoEn(),
                 domain.getActualizadoEn()
         );
+        entity.setCantidadDisponible(domain.getCantidadDisponible());
         return entity;
     }
 

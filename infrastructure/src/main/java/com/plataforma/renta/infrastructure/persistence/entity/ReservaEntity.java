@@ -1,6 +1,7 @@
 package com.plataforma.renta.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -50,6 +51,28 @@ public class ReservaEntity {
 
     @Column(name = "actualizado_en", nullable = false)
     private Instant actualizadoEn;
+
+    @Column(name = "solicitud_devolucion")
+    private Boolean solicitudDevolucion = false;
+
+    @Column(name = "estado_devolucion", length = 50)
+    private String estadoDevolucion;
+
+    @Column(name = "nota_devolucion_cliente", columnDefinition = "TEXT")
+    private String notaDevolucionCliente;
+
+    @Column(name = "costo_reparacion", precision = 14, scale = 2)
+    private BigDecimal costoReparacion = BigDecimal.ZERO;
+
+    @Column(name = "descripcion_dano", columnDefinition = "TEXT")
+    private String descripcionDano;
+
+    @Column(name = "observacion_propietario", columnDefinition = "TEXT")
+    private String observacionPropietario;
+
+    @Column(name = "fecha_devolucion")
+    private Instant fechaDevolucion;
+
 
     @OneToMany(mappedBy = "reserva", fetch = FetchType.LAZY)
     private List<DetalleReservaEntity> detalles = new ArrayList<>();
@@ -122,4 +145,25 @@ public class ReservaEntity {
         detalles.remove(detalle);
         detalle.setReserva(null);
     }
+    public Boolean getSolicitudDevolucion() { return solicitudDevolucion != null ? solicitudDevolucion : false; }
+    public void setSolicitudDevolucion(Boolean solicitudDevolucion) { this.solicitudDevolucion = solicitudDevolucion; }
+
+    public String getEstadoDevolucion() { return estadoDevolucion; }
+    public void setEstadoDevolucion(String estadoDevolucion) { this.estadoDevolucion = estadoDevolucion; }
+
+    public String getNotaDevolucionCliente() { return notaDevolucionCliente; }
+    public void setNotaDevolucionCliente(String notaDevolucionCliente) { this.notaDevolucionCliente = notaDevolucionCliente; }
+
+    public BigDecimal getCostoReparacion() { return costoReparacion != null ? costoReparacion : BigDecimal.ZERO; }
+    public void setCostoReparacion(BigDecimal costoReparacion) { this.costoReparacion = costoReparacion; }
+
+    public String getDescripcionDano() { return descripcionDano; }
+    public void setDescripcionDano(String descripcionDano) { this.descripcionDano = descripcionDano; }
+
+    public String getObservacionPropietario() { return observacionPropietario; }
+    public void setObservacionPropietario(String observacionPropietario) { this.observacionPropietario = observacionPropietario; }
+
+    public Instant getFechaDevolucion() { return fechaDevolucion; }
+    public void setFechaDevolucion(Instant fechaDevolucion) { this.fechaDevolucion = fechaDevolucion; }
+
 }

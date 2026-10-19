@@ -17,6 +17,7 @@ public final class Herramienta {
     private final String modelo;
     private Dinero precioDia;
     private final int cantidadTotal;
+    private final int cantidadDisponible;
     private HerramientaPubEstado estadoPublicacion;
     private BigDecimal ivaPorcentaje;
     private boolean ivaAplica;
@@ -28,6 +29,17 @@ public final class Herramienta {
                        Dinero precioDia, int cantidadTotal, HerramientaPubEstado estadoPublicacion,
                        BigDecimal ivaPorcentaje, boolean ivaAplica,
                        Instant creadoEn, Instant actualizadoEn) {
+        this(id, categoriaId, propietarioId, nombre, descripcion, marca, modelo,
+             precioDia, cantidadTotal, cantidadTotal, estadoPublicacion,
+             ivaPorcentaje, ivaAplica, creadoEn, actualizadoEn);
+    }
+
+    public Herramienta(UUID id, UUID categoriaId, UUID propietarioId,
+                       String nombre, String descripcion, String marca, String modelo,
+                       Dinero precioDia, int cantidadTotal, int cantidadDisponible,
+                       HerramientaPubEstado estadoPublicacion,
+                       BigDecimal ivaPorcentaje, boolean ivaAplica,
+                       Instant creadoEn, Instant actualizadoEn) {
         this.id = id;
         this.categoriaId = categoriaId;
         this.propietarioId = propietarioId;
@@ -37,6 +49,7 @@ public final class Herramienta {
         this.modelo = modelo;
         this.precioDia = precioDia;
         this.cantidadTotal = cantidadTotal;
+        this.cantidadDisponible = cantidadDisponible;
         this.estadoPublicacion = estadoPublicacion;
         this.ivaPorcentaje = ivaPorcentaje;
         this.ivaAplica = ivaAplica;
@@ -53,6 +66,7 @@ public final class Herramienta {
     public String getModelo() { return modelo; }
     public Dinero getPrecioDia() { return precioDia; }
     public int getCantidadTotal() { return cantidadTotal; }
+    public int getCantidadDisponible() { return cantidadDisponible; }
     public HerramientaPubEstado getEstadoPublicacion() { return estadoPublicacion; }
     public BigDecimal getIvaPorcentaje() { return ivaPorcentaje; }
     public boolean isIvaAplica() { return ivaAplica; }

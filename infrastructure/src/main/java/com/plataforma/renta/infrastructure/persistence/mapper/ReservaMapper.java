@@ -17,7 +17,7 @@ public class ReservaMapper {
     public Reserva toDomain(ReservaEntity entity) {
         if (entity == null) return null;
         UUID clienteId = entity.getCliente() != null ? entity.getCliente().getUsuarioId() : null;
-        return Reserva.reconstruir(
+        Reserva res = Reserva.reconstruir(
                 entity.getId(),
                 clienteId,
                 toDomainEstado(entity.getEstado()),
@@ -31,6 +31,14 @@ public class ReservaMapper {
                 entity.getCanceladoPorUsuarioId(),
                 entity.getActualizadoEn()
         );
+        res.setSolicitudDevolucion(entity.getSolicitudDevolucion());
+        res.setEstadoDevolucion(entity.getEstadoDevolucion());
+        res.setNotaDevolucionCliente(entity.getNotaDevolucionCliente());
+        res.setCostoReparacion(Dinero.cop(entity.getCostoReparacion()));
+        res.setDescripcionDano(entity.getDescripcionDano());
+        res.setObservacionPropietario(entity.getObservacionPropietario());
+        res.setFechaDevolucion(entity.getFechaDevolucion());
+        return res;
     }
 
     public ReservaEntity toEntity(Reserva domain) {
@@ -49,6 +57,13 @@ public class ReservaMapper {
         entity.setFechaCancelacion(domain.getFechaCancelacion());
         entity.setMotivoCancelacion(domain.getMotivoCancelacion());
         entity.setCanceladoPorUsuarioId(domain.getCanceladoPorUsuarioId());
+        entity.setSolicitudDevolucion(domain.isSolicitudDevolucion());
+        entity.setEstadoDevolucion(domain.getEstadoDevolucion());
+        entity.setNotaDevolucionCliente(domain.getNotaDevolucionCliente());
+        entity.setCostoReparacion(domain.getCostoReparacion() != null ? domain.getCostoReparacion().getMonto() : java.math.BigDecimal.ZERO);
+        entity.setDescripcionDano(domain.getDescripcionDano());
+        entity.setObservacionPropietario(domain.getObservacionPropietario());
+        entity.setFechaDevolucion(domain.getFechaDevolucion());
         return entity;
     }
 
