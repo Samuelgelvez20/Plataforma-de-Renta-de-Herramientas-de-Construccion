@@ -24,3 +24,5 @@ release.properties
 
 # Testcontainers / temporales
 testcontainers.properties
+platform/src/test-disabled/
+platform/src/test-integration/
