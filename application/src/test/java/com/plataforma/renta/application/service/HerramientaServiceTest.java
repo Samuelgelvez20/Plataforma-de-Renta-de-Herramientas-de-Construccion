@@ -316,4 +316,18 @@ class HerramientaServiceTest {
         assertThatThrownBy(() -> herramientaService.calcularDisponibilidad(id, inicio, fin))
                 .isInstanceOf(EntidadNoEncontradaException.class);
     }
+
+    @Test
+    @DisplayName("listarPorPropietario retorna solo las herramientas del propietario especificado")
+    void listarPorPropietarioRetornaSoloHerramientasPropias() {
+        UUID propietarioId = UUID.randomUUID();
+        Herramienta h1 = new Herramienta(UUID.randomUUID(), UUID.randomUUID(), propietarioId, "Taladro", "Desc", "Bosch", "GSB", Dinero.cop(BigDecimal.valueOf(50000)), 3, HerramientaPubEstado.PUBLICADA, BigDecimal.valueOf(19), true, Instant.now(), Instant.now());
+        when(herramientaRepository.findByPropietarioId(propietarioId)).thenReturn(java.util.List.of(h1));
+
+        java.util.List<Herramienta> resultado = herramientaService.listarPorPropietario(propietarioId);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).getNombre()).isEqualTo("Taladro");
+        verify(herramientaRepository).findByPropietarioId(propietarioId);
+    }
 }

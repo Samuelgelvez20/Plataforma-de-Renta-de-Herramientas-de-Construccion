@@ -75,6 +75,20 @@ public class ReservaController {
         return ResponseEntity.ok(toResponse(r));
     }
 
+    @PutMapping("/{id}/cancelar")
+    @Operation(summary = "Cancelar reserva", description = "El cliente titular o un administrador cancelan la reserva liberando la disponibilidad")
+    public ResponseEntity<ReservaResponse> cancelar(
+            @PathVariable UUID id,
+            @RequestBody(required = false) CancelarReservaRequest req,
+            Authentication auth) {
+        Usuario actor = authService.obtenerUsuarioPorEmail(auth.getName());
+        String motivo = req != null && req.motivo() != null && !req.motivo().isBlank()
+                ? req.motivo()
+                : "Cancelada por el cliente titular";
+        Reserva r = reservaService.cancelarReserva(id, motivo, actor.getId(), actor.getRol());
+        return ResponseEntity.ok(toResponse(r));
+    }
+
     @PutMapping("/{id}/entregar")
     @Operation(summary = "Entregar equipo", description = "Marca el equipo como entregado al cliente (EN_CURSO)")
     public ResponseEntity<ReservaResponse> entregar(@PathVariable UUID id, Authentication auth) {
@@ -83,15 +97,32 @@ public class ReservaController {
         return ResponseEntity.ok(toResponse(r));
     }
 
-    @PutMapping("/{id}/devolver")
-    @Operation(summary = "Devolver equipo", description = "Finaliza la renta registrando inspección de daños si aplica")
-    public ResponseEntity<ReservaResponse> devolver(@PathVariable UUID id, @RequestBody(required = false) DevolverReservaRequest req, Authentication auth) {
+    @PutMapping("/{id}/solicitar-devolucion")
+    @Operation(summary = "Solicitar devolución", description = "El cliente notifica que el equipo está listo para retorno con informe opcional")
+    public ResponseEntity<ReservaResponse> solicitarDevolucion(
+            @PathVariable UUID id,
+            @RequestBody(required = false) SolicitarDevolucionRequest req,
+            Authentication auth) {
         Usuario actor = authService.obtenerUsuarioPorEmail(auth.getName());
+        String nota = req != null ? req.notaCliente() : null;
+        Reserva r = reservaService.solicitarDevolucion(id, nota, actor.getId(), actor.getRol());
+        return ResponseEntity.ok(toResponse(r));
+    }
+
+    @PutMapping("/{id}/devolver")
+    @Operation(summary = "Devolver y validar equipo", description = "Inspección técnica: acepta o rechaza retorno con cobro de daños si aplica")
+    public ResponseEntity<ReservaResponse> devolver(
+            @PathVariable UUID id,
+            @RequestBody(required = false) DevolverReservaRequest req,
+            Authentication auth) {
+        Usuario actor = authService.obtenerUsuarioPorEmail(auth.getName());
+        boolean aceptada = req == null || req.aceptada() == null || req.aceptada();
         boolean danos = req != null && req.presentaDanos();
         String desc = req != null ? req.descripcionDano() : null;
-        var costo = req != null && req.costoReparacion() != null ? java.math.BigDecimal.valueOf(req.costoReparacion().doubleValue()) : null;
+        var costo = req != null && req.costoReparacion() != null ? req.costoReparacion() : java.math.BigDecimal.ZERO;
+        String obs = req != null ? req.observaciones() : null;
 
-        Reserva r = reservaService.devolverEquipo(id, danos, desc, costo, actor.getId(), actor.getRol());
+        Reserva r = reservaService.devolverEquipo(id, aceptada, danos, desc, costo, obs, actor.getId(), actor.getRol());
         return ResponseEntity.ok(toResponse(r));
     }
 
@@ -108,6 +139,8 @@ public class ReservaController {
                 ))
                 .toList();
 
+        boolean pagada = reservaService.estaPagada(r.getId());
+
         return new ReservaResponse(
                 r.getId(),
                 r.getClienteId(),
@@ -117,7 +150,14 @@ public class ReservaController {
                 r.calcularTotal().getMonto(),
                 r.calcularSubtotal().getMonto(),
                 r.calcularIva().getMonto(),
-                detalles
+                pagada,
+                detalles,
+                r.isSolicitudDevolucion(),
+                r.getEstadoDevolucion(),
+                r.getNotaDevolucionCliente(),
+                r.getCostoReparacion() != null ? r.getCostoReparacion().getMonto() : java.math.BigDecimal.ZERO,
+                r.getDescripcionDano(),
+                r.getObservacionPropietario()
         );
     }
 }

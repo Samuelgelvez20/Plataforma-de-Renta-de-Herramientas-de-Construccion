@@ -17,6 +17,7 @@ import com.plataforma.renta.domain.port.out.ConfiguracionFiscalRepository;
 import com.plataforma.renta.domain.port.out.DisponibilidadRepository;
 import com.plataforma.renta.domain.port.out.HerramientaRepository;
 import com.plataforma.renta.domain.port.out.ReservaRepository;
+import com.plataforma.renta.domain.port.out.PagoRepository;
 import com.plataforma.renta.domain.value.Dinero;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -37,17 +38,20 @@ public class ReservaService {
     private final AdvisoryLockService advisoryLockService;
     private final ConfiguracionFiscalRepository configuracionFiscalRepository;
     private final DisponibilidadRepository disponibilidadRepository;
+    private final PagoRepository pagoRepository;
 
     public ReservaService(ReservaRepository reservaRepository,
                           HerramientaRepository herramientaRepository,
                           AdvisoryLockService advisoryLockService,
                           ConfiguracionFiscalRepository configuracionFiscalRepository,
-                          DisponibilidadRepository disponibilidadRepository) {
+                          DisponibilidadRepository disponibilidadRepository,
+                          PagoRepository pagoRepository) {
         this.reservaRepository = reservaRepository;
         this.herramientaRepository = herramientaRepository;
         this.advisoryLockService = advisoryLockService;
         this.configuracionFiscalRepository = configuracionFiscalRepository;
         this.disponibilidadRepository = disponibilidadRepository;
+        this.pagoRepository = pagoRepository;
     }
 
     @Transactional
@@ -128,7 +132,7 @@ public class ReservaService {
     }
 
     @Transactional
-    public void cancelarReserva(com.plataforma.renta.application.command.CancelarReservaCommand cmd, UUID currentUserId, UserRol currentUserRol) {
+    public Reserva cancelarReserva(com.plataforma.renta.application.command.CancelarReservaCommand cmd, UUID currentUserId, UserRol currentUserRol) {
         Reserva reserva = reservaRepository.findByIdForUpdate(cmd.reservaId())
                 .orElseThrow(() -> new EntidadNoEncontradaException("Reserva no encontrada: " + cmd.reservaId()));
 
@@ -142,6 +146,13 @@ public class ReservaService {
             throw new EstadoInvalidoException("Reserva no puede cancelarse desde estado: " + reserva.getEstado());
         }
 
+        boolean pagada = estaPagada(reserva.getId());
+        String motivoFinal = cmd.motivo();
+        if (pagada) {
+            motivoFinal = (motivoFinal != null ? motivoFinal : "Cancelada por el cliente") +
+                    " [PAGADA: Transacción en custodia; elegible para trámite de reembolso]";
+        }
+
         // Obtener herramientas para liberar stock
         List<UUID> herramientaIds = reserva.getDetalles().stream()
                 .map(DetalleReserva -> DetalleReserva.getHerramientaId())
@@ -152,11 +163,18 @@ public class ReservaService {
         advisoryLockService.acquireLocks(herramientaIds);
 
         try {
-            reserva.cancelar(Instant.now(), cmd.motivo(), currentUserId);
-            reservaRepository.save(reserva);
+            reserva.cancelar(Instant.now(), motivoFinal, currentUserId);
+            return reservaRepository.save(reserva);
         } finally {
             advisoryLockService.releaseLocks();
         }
+    }
+
+    @Transactional
+    public Reserva cancelarReserva(UUID reservaId, String motivo, UUID currentUserId, UserRol currentUserRol) {
+        return cancelarReserva(new com.plataforma.renta.application.command.CancelarReservaCommand(
+                reservaId, motivo != null ? motivo : "Cancelada por usuario", currentUserId),
+                currentUserId, currentUserRol);
     }
 
     @Transactional
@@ -215,10 +233,25 @@ public class ReservaService {
                 .orElseThrow(() -> new EntidadNoEncontradaException("Reserva no encontrada: " + id));
     }
 
+    public boolean estaPagada(UUID reservaId) {
+        return pagoRepository.existsCompletadoByReservaId(reservaId);
+    }
+
     @Transactional
     public Reserva aceptarReserva(UUID id, UUID currentUserId, UserRol currentUserRol) {
         Reserva r = reservaRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new EntidadNoEncontradaException("Reserva no encontrada: " + id));
+
+        if (currentUserRol != UserRol.ADMIN) {
+            List<UUID> misHerramientas = herramientaRepository.findByPropietarioId(currentUserId).stream()
+                    .map(Herramienta::getId)
+                    .toList();
+            boolean esPropietario = r.getDetalles().stream().anyMatch(d -> misHerramientas.contains(d.getHerramientaId()));
+            if (!esPropietario) {
+                throw new OperacionInvalidaException("No autorizado: no es el propietario de la herramienta para aceptar la reserva");
+            }
+        }
+
         r.confirmar(Instant.now());
         return reservaRepository.save(r);
     }
@@ -233,16 +266,78 @@ public class ReservaService {
     public Reserva entregarEquipo(UUID id, UUID currentUserId, UserRol currentUserRol) {
         Reserva r = reservaRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new EntidadNoEncontradaException("Reserva no encontrada: " + id));
+
+        // Validar autorización: solo el propietario o ADMIN pueden entregar
+        if (currentUserRol != UserRol.ADMIN) {
+            List<UUID> misHerramientas = herramientaRepository.findByPropietarioId(currentUserId).stream()
+                    .map(Herramienta::getId)
+                    .toList();
+            boolean esPropietario = r.getDetalles().stream().anyMatch(d -> misHerramientas.contains(d.getHerramientaId()));
+            if (!esPropietario) {
+                throw new OperacionInvalidaException("No autorizado: no es el propietario de la herramienta a entregar");
+            }
+        }
+
+        // Validar que el pago requerido esté completado antes de permitir la entrega
+        if (!pagoRepository.existsCompletadoByReservaId(r.getId())) {
+            throw new OperacionInvalidaException("No se puede registrar la entrega: el pago requerido no se ha completado");
+        }
+
         r.iniciar(Instant.now());
+        return reservaRepository.save(r);
+    }
+
+        @Transactional
+    public Reserva solicitarDevolucion(UUID id, String notaCliente, UUID currentUserId, UserRol currentUserRol) {
+        Reserva r = reservaRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntidadNoEncontradaException("Reserva no encontrada: " + id));
+
+        if (currentUserRol != UserRol.ADMIN && !r.getClienteId().equals(currentUserId)) {
+            throw new OperacionInvalidaException("No autorizado: solo el cliente titular de la reserva puede solicitar la devolución");
+        }
+
+        r.solicitarDevolucion(notaCliente);
+        return reservaRepository.save(r);
+    }
+
+    @Transactional
+    public Reserva devolverEquipo(UUID id, boolean aceptada, boolean presentaDanos, String descripcionDano,
+                                  BigDecimal costoReparacion, String observaciones,
+                                  UUID currentUserId, UserRol currentUserRol) {
+        Reserva r = reservaRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntidadNoEncontradaException("Reserva no encontrada: " + id));
+
+        if (currentUserRol != UserRol.ADMIN) {
+            List<UUID> misHerramientas = herramientaRepository.findByPropietarioId(currentUserId).stream()
+                    .map(Herramienta::getId)
+                    .toList();
+            boolean esPropietario = r.getDetalles().stream().anyMatch(d -> misHerramientas.contains(d.getHerramientaId()));
+            boolean esCliente = r.getClienteId().equals(currentUserId);
+            if (!esPropietario && !esCliente) {
+                throw new OperacionInvalidaException("No autorizado: no es el propietario de la herramienta ni el cliente titular de la reserva para registrar la devolución");
+            }
+        }
+
+        r.setSolicitudDevolucion(true);
+        r.setFechaDevolucion(Instant.now());
+        r.setDescripcionDano(presentaDanos ? descripcionDano : null);
+        r.setCostoReparacion(presentaDanos && costoReparacion != null ? Dinero.cop(costoReparacion) : Dinero.cero());
+        r.setObservacionPropietario(observaciones);
+
+        if (aceptada) {
+            r.finalizar(Instant.now());
+            r.setEstadoDevolucion(presentaDanos ? "ACEPTADA_CON_DANOS" : "ACEPTADA");
+        } else {
+            r.setEstadoDevolucion("RECHAZADA_POR_DANOS");
+        }
+
         return reservaRepository.save(r);
     }
 
     @Transactional
     public Reserva devolverEquipo(UUID id, boolean presentaDanos, String descripcionDano, BigDecimal costoReparacion, UUID currentUserId, UserRol currentUserRol) {
-        Reserva r = reservaRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new EntidadNoEncontradaException("Reserva no encontrada: " + id));
-        r.finalizar(Instant.now());
-        return reservaRepository.save(r);
+        return devolverEquipo(id, true, presentaDanos, descripcionDano, costoReparacion, null, currentUserId, currentUserRol);
     }
+
 
 }

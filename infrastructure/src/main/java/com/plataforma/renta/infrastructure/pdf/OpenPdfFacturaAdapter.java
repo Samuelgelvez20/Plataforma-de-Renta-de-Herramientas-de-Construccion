@@ -8,6 +8,8 @@ import com.plataforma.renta.domain.model.Factura;
 import com.plataforma.renta.domain.model.FacturaTipo;
 import com.plataforma.renta.domain.port.out.FacturaPdfPort;
 import org.springframework.stereotype.Component;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
@@ -79,12 +81,14 @@ public class OpenPdfFacturaAdapter implements FacturaPdfPort {
             receptorHeader.setPadding(6f);
             partiesTable.addCell(receptorHeader);
 
-            PdfPCell emisorData = new PdfPCell(new Phrase(factura.getDatosEmisor() != null ? factura.getDatosEmisor() : "Información de emisor registrada en sistema", normalFont));
+            PdfPCell emisorData = new PdfPCell();
             emisorData.setPadding(8f);
+            emisorData.addElement(formatearDatosEmisor(factura.getDatosEmisor(), boldFont, normalFont));
             partiesTable.addCell(emisorData);
 
-            PdfPCell receptorData = new PdfPCell(new Phrase(factura.getDatosReceptor() != null ? factura.getDatosReceptor() : "Información de receptor registrada en sistema", normalFont));
+            PdfPCell receptorData = new PdfPCell();
             receptorData.setPadding(8f);
+            receptorData.addElement(formatearDatosReceptor(factura.getDatosReceptor(), boldFont, normalFont));
             partiesTable.addCell(receptorData);
 
             document.add(partiesTable);
@@ -168,5 +172,86 @@ public class OpenPdfFacturaAdapter implements FacturaPdfPort {
         cell.setHorizontalAlignment(alignment);
         cell.setPadding(4f);
         return cell;
+    }
+
+    private Paragraph formatearDatosEmisor(String json, Font labelFont, Font valFont) {
+        Paragraph p = new Paragraph();
+        p.setLeading(13f);
+        if (json == null || json.isBlank()) {
+            p.add(new Chunk("Información de emisor registrada en sistema", valFont));
+            return p;
+        }
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(json);
+            String razonSocial = node.path("razon_social").asText("");
+            String nit = node.path("nit").asText("");
+            String regimen = node.path("regimen").asText("");
+            String direccion = node.path("direccion").asText("");
+            String municipio = node.path("municipio").asText("");
+            String departamento = node.path("departamento").asText("");
+
+            if (!razonSocial.isBlank()) {
+                p.add(new Chunk("Razón Social: ", labelFont));
+                p.add(new Chunk(razonSocial + "\n", valFont));
+            }
+            if (!nit.isBlank()) {
+                p.add(new Chunk("NIT: ", labelFont));
+                p.add(new Chunk(nit + (regimen.isBlank() ? "" : " (Régimen " + regimen + ")") + "\n", valFont));
+            }
+            if (!direccion.isBlank()) {
+                p.add(new Chunk("Dirección: ", labelFont));
+                p.add(new Chunk(direccion + "\n", valFont));
+            }
+            if (!municipio.isBlank() || !departamento.isBlank()) {
+                p.add(new Chunk("Ubicación: ", labelFont));
+                p.add(new Chunk(municipio + (!municipio.isBlank() && !departamento.isBlank() ? ", " : "") + departamento + "\n", valFont));
+            }
+        } catch (Exception e) {
+            p.add(new Chunk(json, valFont));
+        }
+        return p;
+    }
+
+    private Paragraph formatearDatosReceptor(String json, Font labelFont, Font valFont) {
+        Paragraph p = new Paragraph();
+        p.setLeading(13f);
+        if (json == null || json.isBlank()) {
+            p.add(new Chunk("Información de receptor registrada en sistema", valFont));
+            return p;
+        }
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(json);
+            String nombre = node.path("nombre").asText("");
+            String apellido = node.path("apellido").asText("");
+            String email = node.path("email").asText("");
+            String direccion = node.path("direccion").asText("");
+            String documento = node.path("documento").asText("");
+            if (documento.isBlank()) {
+                documento = node.path("documentoIdentidad").asText("");
+            }
+
+            String nombreCompleto = (nombre + " " + apellido).trim();
+            if (!nombreCompleto.isBlank()) {
+                p.add(new Chunk("Cliente: ", labelFont));
+                p.add(new Chunk(nombreCompleto + "\n", valFont));
+            }
+            if (!documento.isBlank()) {
+                p.add(new Chunk("Documento: ", labelFont));
+                p.add(new Chunk(documento + "\n", valFont));
+            }
+            if (!email.isBlank()) {
+                p.add(new Chunk("Email: ", labelFont));
+                p.add(new Chunk(email + "\n", valFont));
+            }
+            if (!direccion.isBlank()) {
+                p.add(new Chunk("Dirección: ", labelFont));
+                p.add(new Chunk(direccion + "\n", valFont));
+            }
+        } catch (Exception e) {
+            p.add(new Chunk(json, valFont));
+        }
+        return p;
     }
 }

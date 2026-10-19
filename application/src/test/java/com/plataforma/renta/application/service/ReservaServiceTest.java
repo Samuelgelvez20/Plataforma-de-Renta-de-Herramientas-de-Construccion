@@ -1,5 +1,7 @@
 package com.plataforma.renta.application.service;
 
+import com.plataforma.renta.domain.port.out.PagoRepository;
+
 import com.plataforma.renta.application.command.CancelarReservaCommand;
 import com.plataforma.renta.application.command.CrearReservaCommand;
 import com.plataforma.renta.domain.exception.OperacionInvalidaException;
@@ -47,6 +49,8 @@ class ReservaServiceTest {
     private ConfiguracionFiscalRepository configuracionFiscalRepository;
     @Mock
     private DisponibilidadRepository disponibilidadRepository;
+    @Mock
+    private PagoRepository pagoRepository;
 
     private ReservaService reservaService;
 
@@ -57,7 +61,8 @@ class ReservaServiceTest {
                 herramientaRepository,
                 advisoryLockService,
                 configuracionFiscalRepository,
-                disponibilidadRepository
+                disponibilidadRepository,
+                pagoRepository
         );
     }
 
@@ -215,5 +220,97 @@ class ReservaServiceTest {
 
         assertThat(reserva.getEstado()).isEqualTo(ReservaEstado.CANCELADA);
         verify(reservaRepository).save(reserva);
+    }
+
+    @Test
+    @DisplayName("Entregar equipo sin pago completado lanza OperacionInvalidaException")
+    void entregarEquipoSinPagoLanzaExcepcion() {
+        UUID reservaId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID toolId = UUID.randomUUID();
+
+        Reserva reserva = new Reserva(
+                reservaId, UUID.randomUUID(), ReservaEstado.CONFIRMADA,
+                LocalDate.now(), LocalDate.now().plusDays(2),
+                Instant.now(), Instant.now().plusSeconds(1800)
+        );
+        reserva.agregarDetalle(DetalleReserva.crear(
+                reservaId, toolId, 1, Dinero.cop(new BigDecimal("100000")),
+                LocalDate.now(), LocalDate.now().plusDays(2), new BigDecimal("19.00"), true
+        ));
+
+        Herramienta tool = new Herramienta(
+                toolId, UUID.randomUUID(), ownerId, "Excavadora", "Desc", "CAT", "320",
+                Dinero.cop(new BigDecimal("100000")), 2, HerramientaPubEstado.PUBLICADA,
+                new BigDecimal("19.00"), true, Instant.now(), Instant.now()
+        );
+
+        when(reservaRepository.findByIdForUpdate(reservaId)).thenReturn(Optional.of(reserva));
+        when(herramientaRepository.findByPropietarioId(ownerId)).thenReturn(List.of(tool));
+        when(pagoRepository.existsCompletadoByReservaId(reservaId)).thenReturn(false);
+
+        assertThatThrownBy(() -> reservaService.entregarEquipo(reservaId, ownerId, UserRol.PROPIETARIO))
+                .isInstanceOf(OperacionInvalidaException.class)
+                .hasMessageContaining("el pago requerido no se ha completado");
+    }
+
+    @Test
+    @DisplayName("Entregar equipo con pago completado transiciona reserva a EN_CURSO")
+    void entregarEquipoConPagoCompletadoPasaAEnCurso() {
+        UUID reservaId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID toolId = UUID.randomUUID();
+
+        Reserva reserva = new Reserva(
+                reservaId, UUID.randomUUID(), ReservaEstado.CONFIRMADA,
+                LocalDate.now(), LocalDate.now().plusDays(2),
+                Instant.now(), Instant.now().plusSeconds(1800)
+        );
+        reserva.agregarDetalle(DetalleReserva.crear(
+                reservaId, toolId, 1, Dinero.cop(new BigDecimal("100000")),
+                LocalDate.now(), LocalDate.now().plusDays(2), new BigDecimal("19.00"), true
+        ));
+
+        Herramienta tool = new Herramienta(
+                toolId, UUID.randomUUID(), ownerId, "Excavadora", "Desc", "CAT", "320",
+                Dinero.cop(new BigDecimal("100000")), 2, HerramientaPubEstado.PUBLICADA,
+                new BigDecimal("19.00"), true, Instant.now(), Instant.now()
+        );
+
+        when(reservaRepository.findByIdForUpdate(reservaId)).thenReturn(Optional.of(reserva));
+        when(herramientaRepository.findByPropietarioId(ownerId)).thenReturn(List.of(tool));
+        when(pagoRepository.existsCompletadoByReservaId(reservaId)).thenReturn(true);
+        when(reservaRepository.save(any(Reserva.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Reserva resultado = reservaService.entregarEquipo(reservaId, ownerId, UserRol.PROPIETARIO);
+
+        assertThat(resultado.getEstado()).isEqualTo(ReservaEstado.EN_CURSO);
+        verify(reservaRepository).save(reserva);
+    }
+
+    @Test
+    @DisplayName("Usuario no propietario de la herramienta no puede entregar equipo")
+    void usuarioNoPropietarioNoPuedeEntregar() {
+        UUID reservaId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID otroUsuarioId = UUID.randomUUID();
+        UUID toolId = UUID.randomUUID();
+
+        Reserva reserva = new Reserva(
+                reservaId, UUID.randomUUID(), ReservaEstado.CONFIRMADA,
+                LocalDate.now(), LocalDate.now().plusDays(2),
+                Instant.now(), Instant.now().plusSeconds(1800)
+        );
+        reserva.agregarDetalle(DetalleReserva.crear(
+                reservaId, toolId, 1, Dinero.cop(new BigDecimal("100000")),
+                LocalDate.now(), LocalDate.now().plusDays(2), new BigDecimal("19.00"), true
+        ));
+
+        when(reservaRepository.findByIdForUpdate(reservaId)).thenReturn(Optional.of(reserva));
+        when(herramientaRepository.findByPropietarioId(otroUsuarioId)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> reservaService.entregarEquipo(reservaId, otroUsuarioId, UserRol.PROPIETARIO))
+                .isInstanceOf(OperacionInvalidaException.class)
+                .hasMessageContaining("no es el propietario");
     }
 }

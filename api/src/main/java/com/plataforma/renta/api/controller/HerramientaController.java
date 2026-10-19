@@ -142,7 +142,8 @@ public class HerramientaController {
                 h.getCantidadTotal(),
                 h.getEstadoPublicacion().name(),
                 h.getIvaPorcentaje(),
-                h.isIvaAplica()
+                h.isIvaAplica(),
+                h.getCantidadDisponible()
         );
     }
 }

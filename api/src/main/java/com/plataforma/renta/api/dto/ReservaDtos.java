@@ -35,16 +35,34 @@ public class ReservaDtos {
             BigDecimal total,
             BigDecimal subtotal,
             BigDecimal iva,
-            List<DetalleReservaResponse> detalles
+            boolean pagada,
+            List<DetalleReservaResponse> detalles,
+            boolean solicitudDevolucion,
+            String estadoDevolucion,
+            String notaDevolucionCliente,
+            BigDecimal costoReparacion,
+            String descripcionDano,
+            String observacionPropietario
     ) {}
 
     public record RechazarReservaRequest(
             String motivo
     ) {}
 
+    public record SolicitarDevolucionRequest(
+            String notaCliente
+    ) {}
+
     public record DevolverReservaRequest(
+            Boolean aceptada,
             boolean presentaDanos,
             String descripcionDano,
-            BigDecimal costoReparacion
+            BigDecimal costoReparacion,
+            String observaciones,
+            String notaCliente
+    ) {}
+
+    public record CancelarReservaRequest(
+            String motivo
     ) {}
 }

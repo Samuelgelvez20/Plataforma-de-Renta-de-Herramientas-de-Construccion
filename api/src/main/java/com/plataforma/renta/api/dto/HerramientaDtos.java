@@ -20,7 +20,8 @@ public class HerramientaDtos {
             int cantidadTotal,
             String estadoPublicacion,
             BigDecimal ivaPorcentaje,
-            boolean ivaAplica
+            boolean ivaAplica,
+            int cantidadDisponible
     ) {}
 
     public record CrearHerramientaRequest(

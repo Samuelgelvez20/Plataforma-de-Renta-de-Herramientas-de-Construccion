@@ -107,8 +107,10 @@ public class PagoService {
             }
 
             // 8. Transiciones atómicas
-            reserva.confirmar(Instant.now());
-            reservaRepository.save(reserva);
+            if (reserva.getEstado() == ReservaEstado.PENDIENTE) {
+                reserva.confirmar(Instant.now());
+                reservaRepository.save(reserva);
+            }
 
             // 9. Pago COMPLETADO
             Pago pago = Pago.completado(cmd.reservaId(), totalCalculado, cmd.proveedorPago(), cmd.transaccionId());
