@@ -70,6 +70,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(org.springframework.dao.DataIntegrityViolationException ex) {
+        String msg = "Conflicto de unicidad: el registro ya existe en el sistema";
+        if (ex.getMessage() != null && ex.getMessage().contains("propietario_nit_key")) {
+            msg = "El NIT ingresado ya se encuentra registrado por otra empresa";
+        } else if (ex.getMessage() != null && ex.getMessage().contains("usuario_email_key")) {
+            msg = "El correo electrónico ya se encuentra registrado";
+        }
+        return buildResponse(HttpStatus.BAD_REQUEST, "Registro duplicado", msg);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno del servidor", ex.getMessage());

@@ -1,5 +1,7 @@
 package com.plataforma.renta.application.service;
 
+import com.plataforma.renta.domain.model.Cliente;
+import com.plataforma.renta.domain.model.Propietario;
 import com.plataforma.renta.domain.model.Usuario;
 import com.plataforma.renta.domain.model.UserRol;
 
@@ -18,7 +20,15 @@ public interface AuthService {
 
     List<Usuario> listarTodos();
 
-    Usuario toggleActivo(UUID id);
+    Usuario toggleActivo(UUID id, UUID actorId);
+
+    Usuario actualizarUsuario(UUID id, String nombre, String apellido, String telefono, String direccion, String razonSocial, String nit);
+
+    void eliminarUsuario(UUID id, UUID actorId);
+
+    Propietario obtenerPropietarioPorUsuarioId(UUID usuarioId);
+
+    Cliente obtenerClientePorUsuarioId(UUID usuarioId);
 
     record AuthResult(String token, Usuario usuario) {}
 
