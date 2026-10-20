@@ -1,246 +1,227 @@
 package com.plataforma.renta.platform.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.plataforma.renta.domain.model.Usuario;
+import com.plataforma.renta.api.controller.AuthController;
+import com.plataforma.renta.api.dto.AuthDtos.AuthResponse;
+import com.plataforma.renta.api.dto.AuthDtos.LoginRequest;
+import com.plataforma.renta.api.dto.AuthDtos.RegisterRequest;
+import com.plataforma.renta.api.dto.AuthDtos.UserResponse;
+import com.plataforma.renta.application.service.AuthService;
+import com.plataforma.renta.application.service.AuthService.AuthResult;
+import com.plataforma.renta.application.service.AuthService.RegisterUserCommand;
+import com.plataforma.renta.domain.exception.OperacionInvalidaException;
 import com.plataforma.renta.domain.model.UserRol;
-import com.plataforma.renta.domain.port.out.ClienteRepository;
-import com.plataforma.renta.domain.port.out.PropietarioRepository;
-import com.plataforma.renta.domain.port.out.UsuarioRepository;
+import com.plataforma.renta.domain.model.Usuario;
 import com.plataforma.renta.domain.value.Email;
-import com.plataforma.renta.platform.dto.LoginRequest;
-import com.plataforma.renta.platform.dto.LoginResponse;
-import com.plataforma.renta.platform.dto.RegisterRequest;
-import com.plataforma.renta.platform.security.JwtUtil;
-import java.util.Map;
-import java.util.Optional;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
-import java.util.Collection;
 
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
 
     @Mock
-    AuthenticationManager authenticationManager;
+    private AuthService authService;
 
     @Mock
-    JwtUtil jwtUtil;
+    private Authentication authentication;
 
-    @Mock
-    UsuarioRepository usuarioRepository;
-
-    @Mock
-    PropietarioRepository propietarioRepository;
-
-    @Mock
-    ClienteRepository clienteRepository;
-
-    @Mock
-    PasswordEncoder passwordEncoder;
-
-    @Mock
-    Authentication authentication;
-
-    @Mock
-    UserDetails userDetails;
-
-    AuthController authController;
+    private AuthController authController;
 
     @BeforeEach
     void setUp() {
-        authController = new AuthController(
-                authenticationManager,
-                jwtUtil,
-                usuarioRepository,
-                propietarioRepository,
-                clienteRepository,
-                passwordEncoder
-        );
+        authController = new AuthController(authService);
     }
 
     @Test
-    void register_conRolAdmin_debeFallarCon400() {
-        RegisterRequest request = new RegisterRequest(
-                "admin@test.com",
-                "password123",
-                "Admin",
-                "User",
-                "3001234567",
-                "ADMIN",
-                null, null, null, null, null, null, null
-        );
-
-        ResponseEntity<Map<String, Object>> response = authController.register(request);
-
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
-        assertThat(response.getBody()).containsEntry("error", "No se permite registrar usuarios con rol ADMIN");
-    }
-
-    @Test
-    void register_conRolCliente_debeCrearUsuario() {
-        RegisterRequest request = new RegisterRequest(
-                "cliente@test.com",
-                "password123",
-                "Cliente",
-                "Test",
-                "3001234567",
-                "CLIENTE",
-                null, null, null, null, null, null, null
-        );
-
-        when(usuarioRepository.findByEmail("cliente@test.com")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("password123")).thenReturn("encoded-password");
-
-        ResponseEntity<Map<String, Object>> response = authController.register(request);
-
-        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(response.getBody()).containsEntry("mensaje", "Usuario registrado correctamente");
-        assertThat(response.getBody()).containsKey("usuarioId");
-
-        ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
-        verify(usuarioRepository).save(usuarioCaptor.capture());
-        assertThat(usuarioCaptor.getValue().getRol()).isEqualTo(UserRol.CLIENTE);
-        assertThat(usuarioCaptor.getValue().getEmail().getValor()).isEqualTo("cliente@test.com");
-        assertThat(usuarioCaptor.getValue().getPasswordHash()).isEqualTo("encoded-password");
-
-        verify(clienteRepository).save(any());
-    }
-
-    @Test
-    void register_conRolPropietario_debeCrearUsuarioYPropietario() {
-        // NIT válido: 900123450-4 (dígito de verificación correcto)
-        RegisterRequest request = new RegisterRequest(
-                "propietario@test.com",
-                "password123",
-                "Propietario",
-                "Test",
-                "3001234567",
-                "PROPIETARIO",
-                "Mi Empresa S.A.S.",
-                "900123450-4",
-                "Calle 123",
-                "3001234567",
-                "COMUN",
-                "Bogotá",
-                "Cundinamarca"
-        );
-
-        when(usuarioRepository.findByEmail("propietario@test.com")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("password123")).thenReturn("encoded-password");
-
-        ResponseEntity<Map<String, Object>> response = authController.register(request);
-
-        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-
-        ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
-        verify(usuarioRepository).save(usuarioCaptor.capture());
-        assertThat(usuarioCaptor.getValue().getRol()).isEqualTo(UserRol.PROPIETARIO);
-
-        verify(propietarioRepository).save(any());
-    }
-
-    @Test
-    void register_conRolInvalido_debeFallarCon400() {
-        RegisterRequest request = new RegisterRequest(
-                "invalido@test.com",
-                "password123",
-                "Invalido",
-                "User",
-                "3001234567",
-                "SUPER_ADMIN",
-                null, null, null, null, null, null, null
-        );
-
-        ResponseEntity<Map<String, Object>> response = authController.register(request);
-
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
-        assertThat(response.getBody()).containsEntry("error", "Rol inválido: solo se permiten CLIENTE o PROPIETARIO");
-    }
-
-    @Test
-    void register_conRolNull_debeFallarConValidacion() {
-        RegisterRequest request = new RegisterRequest(
-                "null@test.com",
-                "password123",
-                "Null",
-                "User",
-                "3001234567",
-                null,
-                null, null, null, null, null, null, null
-        );
-
-        ResponseEntity<Map<String, Object>> response = authController.register(request);
-
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
-        assertThat(response.getBody()).containsEntry("error", "Rol es obligatorio: debe ser CLIENTE o PROPIETARIO");
-    }
-
-    @Test
-    void register_conEmailExistente_debeFallarCon400() {
-        RegisterRequest request = new RegisterRequest(
-                "existente@test.com",
-                "password123",
-                "Existente",
-                "User",
-                "3001234567",
-                "CLIENTE",
-                null, null, null, null, null, null, null
-        );
-
-        when(usuarioRepository.findByEmail("existente@test.com")).thenReturn(Optional.of(new Usuario(
-                java.util.UUID.randomUUID(),
-                com.plataforma.renta.domain.value.Email.of("existente@test.com"),
-                "hash",
-                com.plataforma.renta.domain.model.UserRol.CLIENTE,
-                "Existente",
-                "User",
-                "3001234567",
-                java.time.Instant.now(),
-                java.time.Instant.now()
-        )));
-
-        ResponseEntity<Map<String, Object>> response = authController.register(request);
-
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
-        assertThat(response.getBody()).containsEntry("error", "Email ya registrado");
-    }
-
-    @Test
-    void login_exitoso_debeRetornarToken() {
+    @DisplayName("login exitoso debe llamar a AuthService y retornar AuthResponse con token y usuario")
+    void login_exitoso_debeRetornarTokenYUsuario() {
         LoginRequest request = new LoginRequest("user@test.com", "password123");
+        Usuario usuario = new Usuario(
+                UUID.randomUUID(),
+                Email.of("user@test.com"),
+                "encoded-hash",
+                UserRol.CLIENTE,
+                "Juan",
+                "Perez",
+                "3001234567",
+                Instant.now(),
+                Instant.now()
+        );
+        AuthResult authResult = new AuthResult("jwt-token-valido", usuario);
 
-        GrantedAuthority authority = () -> "CLIENTE";
-        Collection authorities = java.util.Collections.singletonList(authority);
+        when(authService.login("user@test.com", "password123")).thenReturn(authResult);
 
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(userDetails);
-        when(userDetails.getUsername()).thenReturn("user@test.com");
-        when(userDetails.getAuthorities()).thenReturn(authorities);
-        when(jwtUtil.generateToken(userDetails)).thenReturn("test-jwt-token");
-
-        ResponseEntity<LoginResponse> response = authController.login(request);
+        ResponseEntity<AuthResponse> response = authController.login(request);
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().token()).isEqualTo("test-jwt-token");
-        assertThat(response.getBody().email()).isEqualTo("user@test.com");
+        assertThat(response.getBody().token()).isEqualTo("jwt-token-valido");
+        assertThat(response.getBody().usuario().email()).isEqualTo("user@test.com");
+        assertThat(response.getBody().usuario().rol()).isEqualTo("CLIENTE");
+    }
+
+    @Test
+    @DisplayName("register con rol ADMIN debe ser rechazado con OperacionInvalidaException")
+    void register_conRolAdmin_debeLanzarExcepcion() {
+        RegisterRequest request = new RegisterRequest(
+                "admin@test.com",
+                "Password123!",
+                "Admin",
+                "User",
+                "ADMIN",
+                "3001234567",
+                null, null, null, null
+        );
+
+        assertThatThrownBy(() -> authController.register(request))
+                .isInstanceOf(OperacionInvalidaException.class)
+                .hasMessageContaining("No está permitido el autorregistro con rol de administrador");
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    @DisplayName("register con rol CLIENTE debe crear el comando con rol CLIENTE")
+    void register_conRolCliente_debeCrearUsuarioCliente() {
+        RegisterRequest request = new RegisterRequest(
+                "cliente@test.com",
+                "Password123!",
+                "Cliente",
+                "Test",
+                "CLIENTE",
+                "3001234567",
+                null, null, null, null
+        );
+
+        Usuario usuario = new Usuario(
+                UUID.randomUUID(),
+                Email.of("cliente@test.com"),
+                "encoded-hash",
+                UserRol.CLIENTE,
+                "Cliente",
+                "Test",
+                "3001234567",
+                Instant.now(),
+                Instant.now()
+        );
+
+        when(authService.register(any(RegisterUserCommand.class))).thenReturn(new AuthResult("jwt-token", usuario));
+
+        ResponseEntity<AuthResponse> response = authController.register(request);
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().token()).isEqualTo("jwt-token");
+        assertThat(response.getBody().usuario().rol()).isEqualTo("CLIENTE");
+
+        ArgumentCaptor<RegisterUserCommand> cmdCaptor = ArgumentCaptor.forClass(RegisterUserCommand.class);
+        verify(authService).register(cmdCaptor.capture());
+        assertThat(cmdCaptor.getValue().rol()).isEqualTo(UserRol.CLIENTE);
+        assertThat(cmdCaptor.getValue().email()).isEqualTo("cliente@test.com");
+    }
+
+    @Test
+    @DisplayName("register con rol PROPIETARIO debe registrar con rol PROPIETARIO")
+    void register_conRolPropietario_debeRegistrarPropietario() {
+        RegisterRequest request = new RegisterRequest(
+                "propietario@test.com",
+                "Password123!",
+                "Carlos",
+                "Gomez",
+                "PROPIETARIO",
+                "3109876543",
+                "Maquinaria SAS",
+                "900123450-4",
+                "Calle 123",
+                null
+        );
+
+        Usuario usuario = new Usuario(
+                UUID.randomUUID(),
+                Email.of("propietario@test.com"),
+                "encoded-hash",
+                UserRol.PROPIETARIO,
+                "Carlos",
+                "Gomez",
+                "3109876543",
+                Instant.now(),
+                Instant.now()
+        );
+
+        when(authService.register(any(RegisterUserCommand.class))).thenReturn(new AuthResult("jwt-token-prop", usuario));
+
+        ResponseEntity<AuthResponse> response = authController.register(request);
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().usuario().rol()).isEqualTo("PROPIETARIO");
+
+        ArgumentCaptor<RegisterUserCommand> cmdCaptor = ArgumentCaptor.forClass(RegisterUserCommand.class);
+        verify(authService).register(cmdCaptor.capture());
+        assertThat(cmdCaptor.getValue().rol()).isEqualTo(UserRol.PROPIETARIO);
+        assertThat(cmdCaptor.getValue().razonSocial()).isEqualTo("Maquinaria SAS");
+        assertThat(cmdCaptor.getValue().nit()).isEqualTo("900123450-4");
+    }
+
+    @Test
+    @DisplayName("register con rol invalido debe lanzar OperacionInvalidaException")
+    void register_conRolInvalido_debeLanzarExcepcion() {
+        RegisterRequest request = new RegisterRequest(
+                "invalido@test.com",
+                "Password123!",
+                "Invalido",
+                "User",
+                "SUPER_USER",
+                "3001234567",
+                null, null, null, null
+        );
+
+        assertThatThrownBy(() -> authController.register(request))
+                .isInstanceOf(OperacionInvalidaException.class)
+                .hasMessageContaining("Rol no válido para registro público");
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    @DisplayName("me con usuario autenticado retorna su perfil")
+    void me_retornaPerfilUsuarioAutenticado() {
+        when(authentication.getName()).thenReturn("usuario@test.com");
+        Usuario usuario = new Usuario(
+                UUID.randomUUID(),
+                Email.of("usuario@test.com"),
+                "hash",
+                UserRol.CLIENTE,
+                "Ana",
+                "Gomez",
+                "3115551234",
+                Instant.now(),
+                Instant.now()
+        );
+        when(authService.obtenerUsuarioPorEmail("usuario@test.com")).thenReturn(usuario);
+
+        ResponseEntity<UserResponse> response = authController.me(authentication);
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().email()).isEqualTo("usuario@test.com");
+        assertThat(response.getBody().nombre()).isEqualTo("Ana");
+        assertThat(response.getBody().apellido()).isEqualTo("Gomez");
         assertThat(response.getBody().rol()).isEqualTo("CLIENTE");
     }
 }
