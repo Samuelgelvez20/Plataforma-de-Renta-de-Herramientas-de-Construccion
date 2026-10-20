@@ -3,6 +3,10 @@
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --color-carbon: #17191C;
+  --color-graphite: #292D32;
+  --color-amber-industrial: #F5A623;
+  --color-ice-white: #F4F5F6;
 }
 
 html, body {

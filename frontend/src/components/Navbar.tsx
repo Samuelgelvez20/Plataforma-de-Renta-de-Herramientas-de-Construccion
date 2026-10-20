@@ -24,20 +24,29 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-40 bg-white border-b border-neutral-200">
       {/* Top Bar Contract: Zone 1 (Brand) — Zone 2 (4-5 Nav Links) — Zone 3 (Primary Action / User) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
-        {/* Zone 1: Brand Wordmark (Single clean element) */}
+        {/* Zone 1: Brand Wordmark (OBRIXEN) */}
         <div
           onClick={() => onNavigate('catalog')}
-          className="flex items-center gap-2.5 cursor-pointer whitespace-nowrap shrink-0"
+          className="flex items-center gap-2.5 cursor-pointer whitespace-nowrap shrink-0 group"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate('catalog'); }}
+          aria-label="Ir al catálogo principal de OBRIXEN"
         >
-          <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-bold shadow-xs">
-            <HardHat className="w-5 h-5 text-slate-950" />
+          <div className="w-9 h-9 rounded-lg bg-[#F5A623] flex items-center justify-center text-[#17191C] font-bold shadow-xs transition-transform group-hover:scale-105">
+            <HardHat className="w-5 h-5 text-[#17191C]" />
           </div>
           <div>
-            <span className="text-base font-bold tracking-tight text-neutral-900 block leading-tight">
-              Equipos & Renta
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base font-extrabold tracking-tight text-[#17191C] block leading-tight font-sans">
+                OBRIXEN
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider bg-[#17191C] text-[#F5A623] px-1.5 py-0.5 rounded">
+                EQUIPOS
+              </span>
+            </div>
             <span className="text-[11px] font-medium text-neutral-500 block">
-              Maquinaria de Construcción
+              Renta de Maquinaria de Construcción
             </span>
           </div>
         </div>

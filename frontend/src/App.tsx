@@ -70,12 +70,13 @@ function AppContent() {
           <ClientDashboard
             onPayReservation={(resv) => setPaymentReservation(resv)}
             onViewInvoice={(invoiceId) => {}}
+            onNavigateCatalog={() => setCurrentView('catalog')}
           />
         )}
 
         {currentView === 'owner' && (
           user?.rol === 'PROPIETARIO' || user?.rol === 'ADMIN' ? (
-            <OwnerDashboard />
+            <OwnerDashboard onNavigateCatalog={() => setCurrentView('catalog')} />
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-16 text-center">
               <div className="p-8 bg-white rounded-2xl border border-neutral-200 shadow-xs">

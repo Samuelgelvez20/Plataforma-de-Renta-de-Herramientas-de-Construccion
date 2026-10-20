@@ -100,7 +100,13 @@ function normalizeReservation(r: any): Reservation {
     fechaCreacion: r.creadoEn || r.fechaCreacion || new Date().toISOString(),
     herramientaNombre: primerDetalle?.herramientaNombre || 'Equipo de Construcción',
     clienteNombre: r.clienteNombre,
-    pagada: Boolean(r.pagada)
+    pagada: Boolean(r.pagada),
+    solicitudDevolucion: Boolean(r.solicitudDevolucion),
+    estadoDevolucion: r.estadoDevolucion,
+    notaDevolucionCliente: r.notaDevolucionCliente,
+    costoReparacion: typeof r.costoReparacion === 'number' ? r.costoReparacion : (r.costoReparacion ? parseFloat(r.costoReparacion) : 0),
+    descripcionDano: r.descripcionDano,
+    observacionPropietario: r.observacionPropietario
   };
 }
 
