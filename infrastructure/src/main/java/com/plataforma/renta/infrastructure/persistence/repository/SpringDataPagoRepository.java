@@ -29,8 +29,12 @@ public interface SpringDataPagoRepository extends JpaRepository<PagoEntity, UUID
     @Query("SELECT p FROM PagoEntity p WHERE p.reserva.id = :reservaId AND p.estado = :estado")
     Optional<PagoEntity> findCompletadoByReservaIdForUpdate(UUID reservaId, PagoEstado estado);
 
-    @Query("SELECT COALESCE(SUM(p.monto), 0) FROM PagoEntity p WHERE p.pagoOriginal.id = :pagoOriginalId")
-    BigDecimal sumMontoByPagoOriginalId(UUID pagoOriginalId);
+    @Query("SELECT COALESCE(SUM(p.monto), 0) FROM PagoEntity p WHERE p.pagoOriginal.id = :pagoOriginalId AND p.estado = :estado")
+    BigDecimal sumMontoByPagoOriginalIdAndEstado(@Param("pagoOriginalId") UUID pagoOriginalId, @Param("estado") PagoEstado estado);
+
+    default BigDecimal sumMontoByPagoOriginalId(UUID pagoOriginalId) {
+        return sumMontoByPagoOriginalIdAndEstado(pagoOriginalId, PagoEstado.REEMBOLSADO);
+    }
 
     boolean existsByReservaIdAndEstado(UUID reservaId, PagoEstado estado);
 

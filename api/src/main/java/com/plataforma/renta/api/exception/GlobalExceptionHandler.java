@@ -22,6 +22,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage());
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage());
+    }
+
     @ExceptionHandler(StockInsuficienteException.class)
     public ResponseEntity<Map<String, Object>> handleStockInsuficiente(StockInsuficienteException ex) {
         return buildResponse(HttpStatus.CONFLICT, "Stock insuficiente", ex.getMessage());

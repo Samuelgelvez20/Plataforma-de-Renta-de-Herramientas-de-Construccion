@@ -406,16 +406,25 @@ export const api = {
       headers: { ...getAuthHeader() }
     });
     const list = await handleResponse<any[]>(res, 'Error al obtener reembolsos');
-    return list.map(r => ({
-      id: r.id,
-      pagoId: r.pagoOriginalId,
-      reservaId: r.reservaId,
-      clienteId: 0,
-      monto: typeof r.monto === 'number' ? r.monto : parseFloat(r.monto || '0'),
-      motivo: r.motivo || '',
-      estado: r.estado || 'PENDIENTE',
-      fechaSolicitud: r.creadoEn || new Date().toISOString()
-    }));
+    return list.map(r => {
+      let estadoNorm: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' = 'PENDIENTE';
+      if (r.estado === 'APROBADO' || r.estado === 'REEMBOLSADO') {
+        estadoNorm = 'APROBADO';
+      } else if (r.estado === 'RECHAZADO' || r.estado === 'FALLIDO') {
+        estadoNorm = 'RECHAZADO';
+      }
+      return {
+        id: r.id,
+        pagoId: r.pagoOriginalId,
+        reservaId: r.reservaId,
+        clienteId: 0,
+        monto: typeof r.monto === 'number' ? r.monto : parseFloat(r.monto || '0'),
+        motivo: r.motivo || '',
+        estado: estadoNorm,
+        resolucion: r.resolucion || (r.motivo && r.motivo.includes(' | Rechazo: ') ? r.motivo.split(' | Rechazo: ')[1] : undefined),
+        fechaSolicitud: r.creadoEn || new Date().toISOString()
+      };
+    });
   },
 
   async requestRefund(pagoId: string | number, motivo: string, reservaId?: string | number, montoConIva?: number): Promise<RefundRequest> {
@@ -430,6 +439,12 @@ export const api = {
       })
     });
     const r = await handleResponse<any>(res, 'Error al solicitar reembolso');
+    let estadoNorm: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' = 'PENDIENTE';
+    if (r.estado === 'APROBADO' || r.estado === 'REEMBOLSADO') {
+      estadoNorm = 'APROBADO';
+    } else if (r.estado === 'RECHAZADO' || r.estado === 'FALLIDO') {
+      estadoNorm = 'RECHAZADO';
+    }
     return {
       id: r.id,
       pagoId: r.pagoOriginalId,
@@ -437,7 +452,8 @@ export const api = {
       clienteId: 0,
       monto: typeof r.monto === 'number' ? r.monto : parseFloat(r.monto || '0'),
       motivo: r.motivo || '',
-      estado: r.estado || 'PENDIENTE',
+      estado: estadoNorm,
+      resolucion: r.resolucion || (r.motivo && r.motivo.includes(' | Rechazo: ') ? r.motivo.split(' | Rechazo: ')[1] : undefined),
       fechaSolicitud: r.creadoEn || new Date().toISOString()
     };
   },

@@ -26,6 +26,11 @@ public class ReembolsoDtos {
             BigDecimal monto,
             String estado,
             String motivo,
-            Instant creadoEn
-    ) {}
+            Instant creadoEn,
+            String resolucion
+    ) {
+        public ReembolsoResponse(UUID id, UUID reservaId, UUID pagoOriginalId, BigDecimal monto, String estado, String motivo, Instant creadoEn) {
+            this(id, reservaId, pagoOriginalId, monto, estado, motivo, creadoEn, null);
+        }
+    }
 }

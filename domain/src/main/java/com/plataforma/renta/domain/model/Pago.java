@@ -62,6 +62,18 @@ public final class Pago {
         this.estado = PagoEstado.FALLIDO;
     }
 
+    public void rechazar(String motivoRechazo) {
+        if (estado != PagoEstado.PENDIENTE) throw new IllegalStateException("Solo PENDIENTE puede ser rechazado");
+        this.estado = PagoEstado.FALLIDO;
+        if (motivoRechazo != null && !motivoRechazo.isBlank()) {
+            this.motivo = this.motivo != null ? this.motivo + " | Rechazo: " + motivoRechazo : motivoRechazo;
+        }
+    }
+
+    public void rechazar() {
+        rechazar(null);
+    }
+
     public void cambiarEstado(PagoEstado nuevoEstado) {
         if (estado != PagoEstado.PENDIENTE) throw new IllegalStateException("Solo PENDIENTE puede cambiar de estado");
         this.estado = nuevoEstado;

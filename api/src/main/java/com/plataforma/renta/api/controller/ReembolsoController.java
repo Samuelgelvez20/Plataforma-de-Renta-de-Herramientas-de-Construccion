@@ -77,20 +77,42 @@ public class ReembolsoController {
         Usuario actor = authService.obtenerUsuarioPorEmail(auth.getName());
         if (req.aprobar()) {
             pagoService.aprobarReembolso(id, actor.getId(), actor.getRol());
+        } else {
+            pagoService.rechazarReembolso(id, req.resolucion(), actor.getId(), actor.getRol());
         }
         Pago p = pagoService.obtenerPorId(id);
         return ResponseEntity.ok(toResponse(p));
     }
 
     private ReembolsoResponse toResponse(Pago p) {
+        String estadoPublico;
+        if (p.getPagoOriginalId() != null) {
+            if (p.getEstado() == com.plataforma.renta.domain.model.PagoEstado.REEMBOLSADO) {
+                estadoPublico = "APROBADO";
+            } else if (p.getEstado() == com.plataforma.renta.domain.model.PagoEstado.FALLIDO) {
+                estadoPublico = "RECHAZADO";
+            } else {
+                estadoPublico = p.getEstado().name();
+            }
+        } else {
+            estadoPublico = p.getEstado().name();
+        }
+
+        String resolucion = null;
+        if (p.getMotivo() != null && p.getMotivo().contains(" | Rechazo: ")) {
+            String[] parts = p.getMotivo().split(" \\| Rechazo: ", 2);
+            resolucion = parts.length > 1 ? parts[1] : null;
+        }
+
         return new ReembolsoResponse(
                 p.getId(),
                 p.getReservaId(),
                 p.getPagoOriginalId(),
                 p.getMonto().getMonto(),
-                p.getEstado().name(),
+                estadoPublico,
                 p.getMotivo(),
-                p.getCreadoEn()
+                p.getCreadoEn(),
+                resolucion
         );
     }
 }

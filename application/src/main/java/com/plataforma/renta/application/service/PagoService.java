@@ -153,8 +153,8 @@ public class PagoService {
         advisoryLockService.acquireLocks(herramientaIds);
 
         try {
-            // 4. Recalcular saldo
-            var yaReembolsado = pagoRepository.sumMontoByPagoOriginalId(pagoOriginal.getId());
+            // 4. Recalcular saldo considerando exclusivamente los reembolsos ejecutados/aprobados (REEMBOLSADO)
+            var yaReembolsado = pagoRepository.sumMontoByPagoOriginalIdAndEstado(pagoOriginal.getId(), PagoEstado.REEMBOLSADO);
             var disponible = pagoOriginal.getMonto().restar(Dinero.cop(yaReembolsado));
 
             if (cmd.montoConIva().getMonto().compareTo(Dinero.cero().getMonto()) <= 0 || cmd.montoConIva().getMonto().compareTo(disponible.getMonto()) > 0) {
@@ -259,6 +259,86 @@ public class PagoService {
 
         // Emitir nota de crédito vinculada al reembolso ya ejecutado
         facturaService.emitirNotaCredito(reserva, reembolso.getMonto(), reembolso.getId());
+    }
+
+    /**
+     * Rechazar una solicitud de reembolso pendiente.
+     * Solo un usuario con rol ADMIN o un usuario con rol PROPIETARIO que sea propietario
+     * de al menos una herramienta de la reserva puede rechazar.
+     * El cliente NUNCA puede rechazar reembolsos.
+     *
+     * @param reembolsoId ID del reembolso a rechazar
+     * @param currentUserId ID del usuario autenticado
+     * @param currentUserRol Rol formal del usuario autenticado
+     */
+    @Transactional
+    public void rechazarReembolso(UUID reembolsoId, UUID currentUserId, UserRol currentUserRol) {
+        rechazarReembolso(reembolsoId, null, currentUserId, currentUserRol);
+    }
+
+    /**
+     * Rechazar una solicitud de reembolso pendiente especificando un motivo o resolución técnica.
+     *
+     * @param reembolsoId ID del reembolso a rechazar
+     * @param motivo Motivo o justificación del rechazo
+     * @param currentUserId ID del usuario autenticado
+     * @param currentUserRol Rol formal del usuario autenticado
+     */
+    @Transactional
+    public void rechazarReembolso(UUID reembolsoId, String motivo, UUID currentUserId, UserRol currentUserRol) {
+        // El cliente NUNCA puede resolver reembolsos
+        if (currentUserRol == UserRol.CLIENTE) {
+            throw new OperacionInvalidaException("No autorizado: el cliente no puede rechazar reembolsos");
+        }
+
+        // Validar existencia de la solicitud
+        Pago reembolso = pagoRepository.findByIdForUpdate(reembolsoId)
+                .orElseThrow(() -> new EntidadNoEncontradaException("Reembolso no encontrado: " + reembolsoId));
+
+        // Validar que el reembolso esté en estado PENDIENTE
+        if (reembolso.getEstado() != PagoEstado.PENDIENTE) {
+            throw new OperacionInvalidaException("No se puede rechazar: el reembolso no está en estado pendiente o ya ha sido procesado");
+        }
+
+        // Validar pago original asociado
+        if (reembolso.getPagoOriginalId() == null) {
+            throw new OperacionInvalidaException("Reembolso inválido: no tiene pago original asociado");
+        }
+
+        // Cargar reserva para comprobar autorización
+        Reserva reserva = reservaRepository.findByIdForUpdate(reembolso.getReservaId())
+                .orElseThrow(() -> new EntidadNoEncontradaException("Reserva no encontrada: " + reembolso.getReservaId()));
+
+        boolean autorizado = false;
+
+        if (currentUserRol == UserRol.ADMIN) {
+            autorizado = true;
+        } else if (currentUserRol == UserRol.PROPIETARIO) {
+            try {
+                List<Herramienta> herramientas = herramientaRepository.findByIdsForUpdate(
+                    reserva.getDetalles().stream()
+                        .map(DetalleReserva::getHerramientaId)
+                        .distinct()
+                        .toList()
+                );
+                for (Herramienta h : herramientas) {
+                    if (h.getPropietarioId().equals(currentUserId)) {
+                        autorizado = true;
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                // Denegar por seguridad si falla la resolución de herramientas
+            }
+        }
+
+        if (!autorizado) {
+            throw new OperacionInvalidaException("No autorizado: solo el propietario relacionado o un administrador pueden rechazar un reembolso");
+        }
+
+        // Transición de estado permitida por el dominio a FALLIDO (estado de fallo/rechazo)
+        reembolso.rechazar(motivo);
+        pagoRepository.save(reembolso);
     }
 
     private int calcularDisponibilidad(UUID herramientaId, java.time.LocalDate inicio, java.time.LocalDate fin, UUID excluirReservaId) {

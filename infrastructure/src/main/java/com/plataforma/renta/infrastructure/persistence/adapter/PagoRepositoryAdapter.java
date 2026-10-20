@@ -76,8 +76,16 @@ public class PagoRepositoryAdapter implements PagoRepository {
     }
 
     @Override
+    public BigDecimal sumMontoByPagoOriginalIdAndEstado(UUID pagoOriginalId, com.plataforma.renta.domain.model.PagoEstado estado) {
+        return springRepo.sumMontoByPagoOriginalIdAndEstado(
+                pagoOriginalId,
+                com.plataforma.renta.infrastructure.persistence.entity.PagoEstado.valueOf(estado.name())
+        );
+    }
+
+    @Override
     public BigDecimal sumMontoByPagoOriginalId(UUID pagoOriginalId) {
-        return springRepo.sumMontoByPagoOriginalId(pagoOriginalId);
+        return sumMontoByPagoOriginalIdAndEstado(pagoOriginalId, com.plataforma.renta.domain.model.PagoEstado.REEMBOLSADO);
     }
 
     @Override
