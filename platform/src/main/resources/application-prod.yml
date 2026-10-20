@@ -1,0 +1,6 @@
+# Configuración específica para el perfil de producción (prod)
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
