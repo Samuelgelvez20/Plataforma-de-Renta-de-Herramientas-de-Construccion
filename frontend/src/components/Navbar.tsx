@@ -4,8 +4,8 @@ import { useToast } from '../context/ToastContext';
 import { HardHat, User as UserIcon, LogOut, FileCode, Menu, X } from 'lucide-react';
 
 interface NavbarProps {
-  currentView: 'catalog' | 'client' | 'owner' | 'admin';
-  onNavigate: (view: 'catalog' | 'client' | 'owner' | 'admin') => void;
+  currentView: 'landing' | 'catalog' | 'client' | 'owner' | 'admin';
+  onNavigate: (view: 'landing' | 'catalog' | 'client' | 'owner' | 'admin') => void;
   onOpenSwagger: () => void;
   onOpenAuth: () => void;
 }
@@ -26,12 +26,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
         {/* Zone 1: Brand Wordmark (OBRIXEN) */}
         <div
-          onClick={() => onNavigate('catalog')}
+          onClick={() => onNavigate('landing')}
           className="flex items-center gap-2.5 cursor-pointer whitespace-nowrap shrink-0 group"
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate('catalog'); }}
-          aria-label="Ir al catálogo principal de OBRIXEN"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate('landing'); }}
+          aria-label="Ir a la página de inicio de OBRIXEN"
         >
           <div className="w-9 h-9 rounded-lg bg-[#F5A623] flex items-center justify-center text-[#17191C] font-bold shadow-xs transition-transform group-hover:scale-105">
             <HardHat className="w-5 h-5 text-[#17191C]" />
@@ -53,6 +53,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 2: Concise Single-Line Navigation Links */}
         <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-neutral-600">
+          <button
+            onClick={() => onNavigate('landing')}
+            className={`whitespace-nowrap shrink-0 transition-colors py-1 cursor-pointer ${
+              currentView === 'landing'
+                ? 'text-neutral-900 border-b-2 border-amber-500 font-semibold'
+                : 'hover:text-neutral-900'
+            }`}
+          >
+            Inicio
+          </button>
+
           <button
             onClick={() => onNavigate('catalog')}
             className={`whitespace-nowrap shrink-0 transition-colors py-1 cursor-pointer ${
@@ -164,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <button
-                onClick={() => { logout(); onNavigate('catalog'); }}
+                onClick={() => { logout(); onNavigate('landing'); }}
                 className="p-2 text-neutral-500 hover:text-rose-600 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
                 title="Cerrar sesión"
               >
@@ -189,6 +200,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           aria-label="Menú de navegación móvil"
           className="md:hidden border-t border-neutral-200 bg-white px-4 pt-3 pb-5 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150"
         >
+          <button
+            onClick={() => { onNavigate('landing'); setMobileMenuOpen(false); }}
+            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              currentView === 'landing' ? 'bg-amber-50 text-amber-900 font-bold border-l-4 border-amber-500' : 'text-neutral-700 hover:bg-neutral-100'
+            }`}
+          >
+            Inicio
+          </button>
+
           <button
             onClick={() => { onNavigate('catalog'); setMobileMenuOpen(false); }}
             className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
@@ -246,7 +266,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-neutral-500 font-mono text-[10px]">{user.rol}</span>
               </div>
               <button
-                onClick={() => { logout(); setMobileMenuOpen(false); }}
+                onClick={() => { logout(); onNavigate('landing'); setMobileMenuOpen(false); }}
                 className="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg flex items-center gap-1 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />

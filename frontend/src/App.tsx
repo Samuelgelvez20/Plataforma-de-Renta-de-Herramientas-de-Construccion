@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
+import { LandingView } from './components/LandingView';
 import { CatalogView } from './components/CatalogView';
 import { ToolDetailModal } from './components/ToolDetailModal';
 import { RentalBookingModal } from './components/RentalBookingModal';
@@ -11,16 +12,31 @@ import { OwnerDashboard } from './components/OwnerDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { SwaggerViewerModal } from './components/SwaggerViewerModal';
 import { AuthModal } from './components/AuthModal';
+import { Footer } from './components/Footer';
 import { Tool, Reservation, Invoice } from './types';
 import { ShieldCheck, HardHat, FileText, CheckCircle2 } from 'lucide-react';
 
+type View = 'landing' | 'catalog' | 'client' | 'owner' | 'admin';
+
 function AppContent() {
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState<'catalog' | 'client' | 'owner' | 'admin'>('catalog');
+  const [currentView, setCurrentView] = useState<View>('landing');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | number | null>(null);
+  const prevUserRef = useRef(user);
 
-  // Redirigir a la vista principal del catálogo siempre que cambie la sesión (login, logout, cambio de cuenta)
+  // Gestión de transiciones de sesión entre visitante y usuario autenticado
   useEffect(() => {
-    setCurrentView('catalog');
+    const prevUser = prevUserRef.current;
+    prevUserRef.current = user;
+
+    // Si el usuario acaba de iniciar sesión mientras estaba en la landing, dirigir al catálogo
+    if (!prevUser && user && currentView === 'landing') {
+      setCurrentView('catalog');
+    }
+    // Si el usuario cierra sesión y estaba en una vista protegida, dirigir a la landing
+    if (prevUser && !user && (currentView === 'client' || currentView === 'owner' || currentView === 'admin')) {
+      setCurrentView('landing');
+    }
   }, [user?.id, user?.email]);
 
   // Modales
@@ -47,20 +63,50 @@ function AppContent() {
     // Keep modal open to show success and PDF download
   };
 
+  const handlePublishEquipment = () => {
+    if (!user) {
+      setShowAuth(true);
+      return;
+    }
+    setCurrentView('owner');
+  };
+
+  const handleNavigateCatalogFromLanding = (categoryId?: string | number) => {
+    setSelectedCategoryFilter(categoryId || null);
+    setCurrentView('catalog');
+  };
+
+  const handleGlobalNavigate = (view: View) => {
+    if (view === 'catalog') {
+      setSelectedCategoryFilter(null);
+    }
+    setCurrentView(view);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 text-neutral-900">
       {/* Strict Top Bar Navigation */}
       <Navbar
         currentView={currentView}
-        onNavigate={setCurrentView}
+        onNavigate={handleGlobalNavigate}
         onOpenSwagger={() => setShowSwagger(true)}
         onOpenAuth={() => setShowAuth(true)}
       />
 
       {/* Main Viewport Content */}
       <main className="flex-1">
+        {currentView === 'landing' && (
+          <LandingView
+            onNavigateCatalog={handleNavigateCatalogFromLanding}
+            onPublishEquipment={handlePublishEquipment}
+            onOpenAuth={() => setShowAuth(true)}
+          />
+        )}
+
         {currentView === 'catalog' && (
           <CatalogView
+            initialCategory={selectedCategoryFilter}
+            onClearInitialCategory={() => setSelectedCategoryFilter(null)}
             onSelectTool={(tool) => setSelectedToolForDetail(tool)}
             onBookTool={handleBookTool}
           />
@@ -70,13 +116,13 @@ function AppContent() {
           <ClientDashboard
             onPayReservation={(resv) => setPaymentReservation(resv)}
             onViewInvoice={(invoiceId) => {}}
-            onNavigateCatalog={() => setCurrentView('catalog')}
+            onNavigateCatalog={() => handleGlobalNavigate('catalog')}
           />
         )}
 
         {currentView === 'owner' && (
           user?.rol === 'PROPIETARIO' || user?.rol === 'ADMIN' ? (
-            <OwnerDashboard onNavigateCatalog={() => setCurrentView('catalog')} />
+            <OwnerDashboard onNavigateCatalog={() => handleGlobalNavigate('catalog')} />
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-16 text-center">
               <div className="p-8 bg-white rounded-2xl border border-neutral-200 shadow-xs">
@@ -86,7 +132,7 @@ function AppContent() {
                   Su cuenta actual ({user?.email}) tiene rol de {user?.rol}. Para registrar maquinaria, despachos u operar devoluciones técnicas, inicie sesión con una cuenta de Propietario o use el selector rápido 'Demo dev' en la barra superior.
                 </p>
                 <button
-                  onClick={() => setCurrentView('catalog')}
+                  onClick={() => handleGlobalNavigate('catalog')}
                   className="mt-5 px-4 py-2 text-xs font-bold bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer"
                 >
                   Volver al Catálogo
@@ -129,30 +175,13 @@ function AppContent() {
         <AuthModal onClose={() => setShowAuth(false)} />
       )}
 
-      {/* Quiet Professional Footer */}
-      <footer className="bg-white border-t border-neutral-200 mt-16 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500">
-          <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
-            <HardHat className="w-4 h-4 text-amber-500" />
-            <span className="font-semibold text-neutral-800">Plataforma de Renta de Equipos de Construcción</span>
-            <span>·</span>
-            <span>Arquitectura Hexagonal & DDD</span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono justify-center sm:justify-end">
-            <span>Spring Boot 3.2.4</span>
-            <span>·</span>
-            <span>Java 21</span>
-            <span>·</span>
-            <span>PostgreSQL 16</span>
-            <span>·</span>
-            <span>Flyway Migrations</span>
-            <span>·</span>
-            <span>React 19 + TypeScript</span>
-          </div>
-        </div>
-      </footer>
+      {/* Unified Industrial Footer */}
+      <Footer
+        onNavigate={handleGlobalNavigate}
+        onOpenSwagger={() => setShowSwagger(true)}
+      />
     </div>
+
   );
 }
 

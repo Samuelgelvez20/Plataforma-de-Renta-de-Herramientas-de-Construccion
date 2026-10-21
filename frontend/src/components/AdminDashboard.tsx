@@ -157,27 +157,28 @@ export const AdminDashboard: React.FC = () => {
       {/* Header */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#17191C] text-[#F5A623] text-xs font-bold uppercase tracking-wider mb-2.5 border border-[#292D32]">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Panel de Control Administrativo</span>
+            <span>Supervisión y Control Administrativo</span>
           </div>
-          <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
-            Métricas de Plataforma y Gestión de Usuarios
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
+            Métricas de Plataforma y Gestión de Cuentas
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            Supervisión consolidada de inventario, reservas, facturación fiscal y cuentas registradas.
+          <p className="text-xs sm:text-sm text-neutral-600 mt-1">
+            Supervisión consolidada de inventario de equipos, reservas, facturación fiscal DIAN y usuarios.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2 shadow-xs"
+            className="px-4 py-2.5 text-xs font-bold text-[#17191C] bg-[#F5A623] hover:bg-[#e09419] rounded-lg transition-colors cursor-pointer inline-flex items-center gap-2 shadow-xs"
           >
             <UserPlus className="w-4 h-4" />
             <span>Registrar Usuario</span>
           </button>
         </div>
       </div>
+
 
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
