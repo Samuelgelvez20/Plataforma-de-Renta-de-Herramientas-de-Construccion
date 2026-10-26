@@ -48,72 +48,72 @@ ON CONFLICT (usuario_id) DO NOTHING;
 
 -- 5. HERRAMIENTAS (24 herramientas exactas: 8 por cada propietario)
 -- Categorías estándar de V2:
---   Maquinaria Pesada:      372f273c-4e0f-44ef-99c6-497eb4c1c404
---   Equipos de Concreto:    b4e10088-394a-44d1-a9bc-ebd59e349757
---   Andamios y Estructuras: f6f83db4-f180-400a-9d36-7939aa0643ca
---   Generación y Bombeo:    18ffd285-6d68-46b5-8558-d460cb366df6
---   Herramienta Eléctrica:  4d1f23b4-a69f-4dee-adbd-68a8e27368ca
---   Herramienta Menor:      6cd11e25-cbe7-4d74-87f8-f20c62fd61ab
+--   Maquinaria Pesada:      b76d4751-8cf2-4db5-8d4c-cabab4e270af
+--   Equipos de Concreto:    248a54ef-36c9-4b40-8ea8-69862c9fb4c7
+--   Andamios y Estructuras: 7752e73a-af20-4428-aad9-07d177ef4312
+--   Generación y Bombeo:    16a20a8b-86b9-4ee1-8dbc-10ab807da353
+--   Herramienta Eléctrica:  31de8d04-1dfd-4a4d-af65-1c68ae92cdcb
+--   Herramienta Menor:      fb149955-d12a-4529-a62b-15ca365baa8f
 
 -- === PROPIETARIO 1: Maquinaria y Equipos Andina S.A.S. (8 herramientas) ===
 INSERT INTO herramienta (id, categoria_id, propietario_id, nombre, descripcion, marca, modelo, precio_dia, cantidad_total, cantidad_disponible, estado_publicacion, iva_porcentaje, iva_aplica)
 VALUES
-  ('44444444-1111-0000-0000-000000000001', '372f273c-4e0f-44ef-99c6-497eb4c1c404', '33333333-3333-3333-3333-333333333331',
+  ('44444444-1111-0000-0000-000000000001', 'b76d4751-8cf2-4db5-8d4c-cabab4e270af', '33333333-3333-3333-3333-333333333331',
    'Retroexcavadora sobre Orugas 20 Ton', 'Excavadora hidráulica de alto rendimiento para movimiento de tierras masivo y excavaciones profundas', 'Caterpillar', '320D', 450000.00, 3, 3, 'PUBLICADA', 19.00, true),
-  ('44444444-1111-0000-0000-000000000002', '372f273c-4e0f-44ef-99c6-497eb4c1c404', '33333333-3333-3333-3333-333333333331',
+  ('44444444-1111-0000-0000-000000000002', 'b76d4751-8cf2-4db5-8d4c-cabab4e270af', '33333333-3333-3333-3333-333333333331',
    'Miniexcavadora Compacta 3.5 Ton', 'Excavadora compacta con giro de voladizo cero ideal para zanjas urbanas y espacios reducidos', 'Bobcat', 'E35', 280000.00, 4, 4, 'PUBLICADA', 19.00, true),
-  ('44444444-1111-0000-0000-000000000003', '372f273c-4e0f-44ef-99c6-497eb4c1c404', '33333333-3333-3333-3333-333333333331',
+  ('44444444-1111-0000-0000-000000000003', 'b76d4751-8cf2-4db5-8d4c-cabab4e270af', '33333333-3333-3333-3333-333333333331',
    'Cargador Frontal Articulado 2.5 m³', 'Cargador de ruedas para cargue ágil de volquetas y acopio de materiales de cantera', 'Komatsu', 'WA200', 520000.00, 2, 2, 'PUBLICADA', 19.00, true),
-  ('44444444-1111-0000-0000-000000000004', '372f273c-4e0f-44ef-99c6-497eb4c1c404', '33333333-3333-3333-3333-333333333331',
+  ('44444444-1111-0000-0000-000000000004', 'b76d4751-8cf2-4db5-8d4c-cabab4e270af', '33333333-3333-3333-3333-333333333331',
    'Minicargador sobre Llantas', 'Equipo versátil para nivelación, cargue de escombros y apoyo logístico en obras civiles', 'Case', 'SR175', 210000.00, 5, 5, 'PUBLICADA', 19.00, true),
-  ('44444444-1111-0000-0000-000000000005', 'b4e10088-394a-44d1-a9bc-ebd59e349757', '33333333-3333-3333-3333-333333333331',
+  ('44444444-1111-0000-0000-000000000005', '248a54ef-36c9-4b40-8ea8-69862c9fb4c7', '33333333-3333-3333-3333-333333333331',
    'Mezcladora de Concreto 2 Bultos Diésel', 'Trompo mezclador con motor diésel para fundición continua de zapatas, vigas y losas', 'Husqvarna', 'C200', 85000.00, 6, 6, 'PUBLICADA', 19.00, true),
-  ('44444444-1111-0000-0000-000000000006', 'b4e10088-394a-44d1-a9bc-ebd59e349757', '33333333-3333-3333-3333-333333333331',
+  ('44444444-1111-0000-0000-000000000006', '248a54ef-36c9-4b40-8ea8-69862c9fb4c7', '33333333-3333-3333-3333-333333333331',
    'Allanadora de Pavimento Helicóptero 36"', 'Allanadora mecánica de 4 aspas para acabado superficial liso en pisos industriales de concreto', 'Wacker Neuson', 'CT36', 110000.00, 4, 4, 'PUBLICADA', 19.00, true),
-  ('44444444-1111-0000-0000-000000000007', 'b4e10088-394a-44d1-a9bc-ebd59e349757', '33333333-3333-3333-3333-333333333331',
+  ('44444444-1111-0000-0000-000000000007', '248a54ef-36c9-4b40-8ea8-69862c9fb4c7', '33333333-3333-3333-3333-333333333331',
    'Vibrador de Concreto Eléctrico 2 HP', 'Vibrador de inmersión con manguera de 4 metros para compactación homogénea de columnas', 'Bosch', 'GVC 22 EX', 45000.00, 8, 8, 'PUBLICADA', 19.00, true),
-  ('44444444-1111-0000-0000-000000000008', 'b4e10088-394a-44d1-a9bc-ebd59e349757', '33333333-3333-3333-3333-333333333331',
+  ('44444444-1111-0000-0000-000000000008', '248a54ef-36c9-4b40-8ea8-69862c9fb4c7', '33333333-3333-3333-3333-333333333331',
    'Regla Vibratoria para Losas 3 m', 'Perfil oscilante de aluminio para compactado y nivelación milimétrica de pavimentos', 'Enar', 'QZ-30', 75000.00, 5, 5, 'PUBLICADA', 19.00, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- === PROPIETARIO 2: Soluciones de Energía y Andamios del Valle S.A.S. (8 herramientas) ===
 INSERT INTO herramienta (id, categoria_id, propietario_id, nombre, descripcion, marca, modelo, precio_dia, cantidad_total, cantidad_disponible, estado_publicacion, iva_porcentaje, iva_aplica)
 VALUES
-  ('44444444-2222-0000-0000-000000000001', 'f6f83db4-f180-400a-9d36-7939aa0643ca', '33333333-3333-3333-3333-333333333332',
+  ('44444444-2222-0000-0000-000000000001', '7752e73a-af20-4428-aad9-07d177ef4312', '33333333-3333-3333-3333-333333333332',
    'Andamio Multidireccional Certificado (Cuerpo 2x2m)', 'Módulo certificado bajo norma OSHA/ANSI con plataformas antideslizantes y rodapiés', 'Layher', 'Allround', 35000.00, 20, 20, 'PUBLICADA', 19.00, true),
-  ('44444444-2222-0000-0000-000000000002', 'f6f83db4-f180-400a-9d36-7939aa0643ca', '33333333-3333-3333-3333-333333333332',
+  ('44444444-2222-0000-0000-000000000002', '7752e73a-af20-4428-aad9-07d177ef4312', '33333333-3333-3333-3333-333333333332',
    'Torre Móvil de Acceso en Aluminio 6 m', 'Torre liviana con ruedas frenadas y estabilizadores telescópicos para trabajo en altura', 'Altrex', 'MiTOWER-6', 65000.00, 6, 6, 'PUBLICADA', 19.00, true),
-  ('44444444-2222-0000-0000-000000000003', 'f6f83db4-f180-400a-9d36-7939aa0643ca', '33333333-3333-3333-3333-333333333332',
+  ('44444444-2222-0000-0000-000000000003', '7752e73a-af20-4428-aad9-07d177ef4312', '33333333-3333-3333-3333-333333333332',
    'Plataforma Colgante Motorizada 4 m', 'Andamio colgante eléctrico certificado para mantenimiento de fachadas y ventanería', 'Tractel', 'Tirak-400', 190000.00, 3, 3, 'PUBLICADA', 19.00, true),
-  ('44444444-2222-0000-0000-000000000004', 'f6f83db4-f180-400a-9d36-7939aa0643ca', '33333333-3333-3333-3333-333333333332',
+  ('44444444-2222-0000-0000-000000000004', '7752e73a-af20-4428-aad9-07d177ef4312', '33333333-3333-3333-3333-333333333332',
    'Escalera Telescópica de Fibra de Vidrio 28 Pasos', 'Escalera extensible dieléctrica certificada para trabajos eléctricos y estructurales', 'Werner', 'D6228-2', 30000.00, 10, 10, 'PUBLICADA', 19.00, true),
-  ('44444444-2222-0000-0000-000000000005', '18ffd285-6d68-46b5-8558-d460cb366df6', '33333333-3333-3333-3333-333333333332',
+  ('44444444-2222-0000-0000-000000000005', '16a20a8b-86b9-4ee1-8dbc-10ab807da353', '33333333-3333-3333-3333-333333333332',
    'Generador Diésel Insonorizado 60 kVA', 'Planta eléctrica cabinada ultrasilenciosa con transferencia automática para faenas exigentes', 'Cummins', 'C60D5', 320000.00, 3, 3, 'PUBLICADA', 19.00, true),
-  ('44444444-2222-0000-0000-000000000006', '18ffd285-6d68-46b5-8558-d460cb366df6', '33333333-3333-3333-3333-333333333332',
+  ('44444444-2222-0000-0000-000000000006', '16a20a8b-86b9-4ee1-8dbc-10ab807da353', '33333333-3333-3333-3333-333333333332',
    'Generador Portátil a Gasolina 8.5 kW', 'Generador inverter robusto para alimentación de herramientas y soldadores en campo', 'Honda', 'EU70is', 120000.00, 6, 6, 'PUBLICADA', 19.00, true),
-  ('44444444-2222-0000-0000-000000000007', '18ffd285-6d68-46b5-8558-d460cb366df6', '33333333-3333-3333-3333-333333333332',
+  ('44444444-2222-0000-0000-000000000007', '16a20a8b-86b9-4ee1-8dbc-10ab807da353', '33333333-3333-3333-3333-333333333332',
    'Motobomba Autocebante para Lodos 3"', 'Bomba centrífuga con motor a gasolina para desagüe de excavaciones con sólidos en suspensión', 'Wacker Neuson', 'PT3A', 70000.00, 5, 5, 'PUBLICADA', 19.00, true),
-  ('44444444-2222-0000-0000-000000000008', '18ffd285-6d68-46b5-8558-d460cb366df6', '33333333-3333-3333-3333-333333333332',
+  ('44444444-2222-0000-0000-000000000008', '16a20a8b-86b9-4ee1-8dbc-10ab807da353', '33333333-3333-3333-3333-333333333332',
    'Torre de Iluminación 4 Lámparas LED 350W', 'Torre con mástil vertical de 8.5 metros y generador propio para operaciones nocturnas', 'Generac', 'VT-Solar', 140000.00, 4, 4, 'PUBLICADA', 19.00, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- === PROPIETARIO 3: Equipos Eléctricos y Menores de Antioquia Ltda. (8 herramientas) ===
 INSERT INTO herramienta (id, categoria_id, propietario_id, nombre, descripcion, marca, modelo, precio_dia, cantidad_total, cantidad_disponible, estado_publicacion, iva_porcentaje, iva_aplica)
 VALUES
-  ('44444444-3333-0000-0000-000000000001', '4d1f23b4-a69f-4dee-adbd-68a8e27368ca', '33333333-3333-3333-3333-333333333333',
+  ('44444444-3333-0000-0000-000000000001', '31de8d04-1dfd-4a4d-af65-1c68ae92cdcb', '33333333-3333-3333-3333-333333333333',
    'Rotomartillo Combinado SDS-Max 11 kg', 'Martillo perforador y demoledor con control de vibración para mampostería pesada', 'Bosch', 'GBH 12-52 DV', 65000.00, 7, 7, 'PUBLICADA', 19.00, true),
-  ('44444444-3333-0000-0000-000000000002', '6cd11e25-cbe7-4d74-87f8-f20c62fd61ab', '33333333-3333-3333-3333-333333333333',
+  ('44444444-3333-0000-0000-000000000002', 'fb149955-d12a-4529-a62b-15ca365baa8f', '33333333-3333-3333-3333-333333333333',
    'Cortadora de Concreto y Asfalto 14"', 'Tronzadora a gasolina con toma de agua para cortes limpios en losas y bordillos', 'Stihl', 'TS 420', 90000.00, 5, 5, 'PUBLICADA', 19.00, true),
-  ('44444444-3333-0000-0000-000000000003', '4d1f23b4-a69f-4dee-adbd-68a8e27368ca', '33333333-3333-3333-3333-333333333333',
+  ('44444444-3333-0000-0000-000000000003', '31de8d04-1dfd-4a4d-af65-1c68ae92cdcb', '33333333-3333-3333-3333-333333333333',
    'Martillo Demoledor Hexagonal Eléctrico 30 kg', 'Rompedor de pavimento eléctrico de alto impacto con energía de golpe de 68 Joules', 'DeWalt', 'D25980', 85000.00, 6, 6, 'PUBLICADA', 19.00, true),
-  ('44444444-3333-0000-0000-000000000004', '6cd11e25-cbe7-4d74-87f8-f20c62fd61ab', '33333333-3333-3333-3333-333333333333',
+  ('44444444-3333-0000-0000-000000000004', 'fb149955-d12a-4529-a62b-15ca365baa8f', '33333333-3333-3333-3333-333333333333',
    'Compactador Tipo Canguro 4 Tiempos', 'Apisonador vertical a gasolina para zanjas de tubería y bases granulares estrechas', 'Mikasa', 'MTX-70', 75000.00, 8, 8, 'PUBLICADA', 19.00, true),
-  ('44444444-3333-0000-0000-000000000005', '6cd11e25-cbe7-4d74-87f8-f20c62fd61ab', '33333333-3333-3333-3333-333333333333',
+  ('44444444-3333-0000-0000-000000000005', 'fb149955-d12a-4529-a62b-15ca365baa8f', '33333333-3333-3333-3333-333333333333',
    'Placa Compactadora Reversible 160 kg', 'Vibrocompactador reversible de avance rápido para adoquinados y subbases de pavimento', 'Weber', 'CR3', 95000.00, 4, 4, 'PUBLICADA', 19.00, true),
-  ('44444444-3333-0000-0000-000000000006', '4d1f23b4-a69f-4dee-adbd-68a8e27368ca', '33333333-3333-3333-3333-333333333333',
+  ('44444444-3333-0000-0000-000000000006', '31de8d04-1dfd-4a4d-af65-1c68ae92cdcb', '33333333-3333-3333-3333-333333333333',
    'Sierra Circular Eléctrica de Banco 10"', 'Mesa de corte de madera de precisión con guía milimétrica para formaletería y carpintería', 'Makita', 'MLT100', 50000.00, 5, 5, 'PUBLICADA', 19.00, true),
-  ('44444444-3333-0000-0000-000000000007', '4d1f23b4-a69f-4dee-adbd-68a8e27368ca', '33333333-3333-3333-3333-333333333333',
+  ('44444444-3333-0000-0000-000000000007', '31de8d04-1dfd-4a4d-af65-1c68ae92cdcb', '33333333-3333-3333-3333-333333333333',
    'Pulidora Angular 9" para Desbaste Pesado', 'Amoladora angular industrial de 2400W para corte de perfiles metálicos y esmerilado', 'Milwaukee', '6088-30', 35000.00, 10, 10, 'PUBLICADA', 19.00, true),
-  ('44444444-3333-0000-0000-000000000008', '6cd11e25-cbe7-4d74-87f8-f20c62fd61ab', '33333333-3333-3333-3333-333333333333',
+  ('44444444-3333-0000-0000-000000000008', 'fb149955-d12a-4529-a62b-15ca365baa8f', '33333333-3333-3333-3333-333333333333',
    'Cortadora de Varilla Eléctrica Hidráulica', 'Cizalla electrohidráulica portátil para corte de acero de refuerzo hasta 1 pulgada', 'Ogura', 'HBC-19', 80000.00, 4, 4, 'PUBLICADA', 19.00, true)
 ON CONFLICT (id) DO NOTHING;
