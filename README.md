@@ -406,8 +406,9 @@ mvn test
 
 ---
 
-## 11. Aviso Legal y Alcance Normativo
+## 11. Implementacion Examen
 
-> **IMPORTANTE — ALCANCE DE LA FACTURACIÓN DEL PROYECTO:**
-> Los documentos PDF de facturas y notas de crédito emitidos por esta plataforma constituyen **comprobantes comerciales y tributarios simulados con propósitos académicos y de demostración funcional**.
-> Esta implementación **no constituye por sí misma una Factura Electrónica de Venta validada previamente por la DIAN** en los términos del Estatuto Tributario colombiano ni del Decreto 358 de 2020. No incluye firma digital con certificado X.509 de un Proveedor Tecnológico Autorizado, generación de CUFE (Código Único de Factura Electrónica), código QR DIAN ni transmisión sincrónica mediante Web Services SOAP/XML a la autoridad tributaria.
+A continuacion se explica el flujo de el cobro por la devolucion del equipo en mal estado:
+
+El cliente devuelve el equipo prestado, da una breve descripcion de el estado del equipo, el estado en el que vuelve, etc.
+Luego el propietario al validar la devolucion del equipo, puede seleccionar si el equipo prestado se devolvio en buen estado o no. Dado caso que el equipo se devuelva en mal estado, el propietario tendra la capacidad de enviar una breve descripcion y el documento de cobro por las reparaciones del equipo, dicho cobro le llegara al cliente que realizo la reserva y la devolucion, par que proceda con su pago correspondiente por los daños al equipo.
