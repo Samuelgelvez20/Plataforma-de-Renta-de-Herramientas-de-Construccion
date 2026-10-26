@@ -6,7 +6,10 @@ import {
   Payment,
   Invoice,
   RefundRequest,
-  DashboardMetrics
+  DashboardMetrics,
+  AdminReservation,
+  AdminInvoice,
+  AdminPayment
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
@@ -312,13 +315,15 @@ export const api = {
   },
 
   // Pagos
-  async processPayment(payload: { reservaId: string | number; metodo: string; claveIdempotencia?: string }): Promise<{ pago: Payment; factura: Invoice; mensaje: string }> {
-    const claveIdempotencia = payload.claveIdempotencia || `idemp-${payload.reservaId}-${Date.now()}`;
+  async processPayment(payload: { reservaId?: string | number; facturaId?: string | number; metodo: string; claveIdempotencia?: string }): Promise<{ pago: Payment; factura: Invoice; mensaje: string }> {
+    const refKey = payload.facturaId || payload.reservaId || 'trans';
+    const claveIdempotencia = payload.claveIdempotencia || `idemp-${refKey}-${Date.now()}`;
     const res = await fetch(`${API_BASE}/pagos/procesar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
       body: JSON.stringify({
         reservaId: payload.reservaId,
+        facturaId: payload.facturaId,
         metodo: payload.metodo,
         claveIdempotencia
       })
@@ -336,11 +341,11 @@ export const api = {
         respuestaPasarela: 'APROBADA',
         fechaPago: data.pago.fechaPago || new Date().toISOString()
       },
-      factura: {
+      factura: data.factura ? {
         id: data.factura.id,
         numeroFactura: data.factura.numeroFactura,
         reservaId: data.factura.reservaId,
-        pagoId: data.pago.id,
+        pagoId: data.pago?.id,
         clienteId: 0,
         propietarioId: 0,
         clienteNombre: 'Cliente Registrado',
@@ -351,8 +356,13 @@ export const api = {
         iva: typeof data.factura.iva === 'number' ? data.factura.iva : parseFloat(data.factura.iva || '0'),
         total: typeof data.factura.total === 'number' ? data.factura.total : parseFloat(data.factura.total || '0'),
         fechaEmision: data.factura.fechaEmision || new Date().toISOString(),
-        lineas: []
-      },
+        lineas: [],
+        tipo: data.factura.tipo,
+        estado: data.factura.estado,
+        descripcionDano: data.factura.descripcionDano,
+        herramientaNombre: data.factura.herramientaNombre,
+        concepto: data.factura.concepto
+      } : (null as any),
       mensaje: data.mensaje || 'Pago procesado exitosamente'
     };
   },
@@ -378,7 +388,12 @@ export const api = {
       iva: typeof f.iva === 'number' ? f.iva : parseFloat(f.iva || '0'),
       total: typeof f.total === 'number' ? f.total : parseFloat(f.total || '0'),
       fechaEmision: f.fechaEmision || new Date().toISOString(),
-      lineas: []
+      lineas: [],
+      tipo: f.tipo || 'FACTURA',
+      estado: f.estado || 'PAGADA',
+      descripcionDano: f.descripcionDano || '',
+      herramientaNombre: f.herramientaNombre || '',
+      concepto: f.concepto || ''
     }));
   },
 
@@ -536,7 +551,7 @@ export const api = {
       rol: u.rol,
       telefono: u.telefono || '',
       direccion: u.direccion || '',
-      documentoIdentidad: u.nit || ('C.C. ' + String(u.id).slice(0, 8)),
+      documentoIdentidad: 'C.C. ' + String(u.id).slice(0, 8),
       activo: u.activo ?? true,
       fechaRegistro: new Date().toISOString()
     }));
@@ -550,7 +565,6 @@ export const api = {
     rol: string;
     telefono?: string;
     razonSocial?: string;
-    nit?: string;
     direccionFiscal?: string;
     direccionEntregaDefault?: string;
   }): Promise<User> {
@@ -567,7 +581,7 @@ export const api = {
       rol: u.rol,
       telefono: u.telefono || '',
       direccion: u.direccion || '',
-      documentoIdentidad: u.nit || ('C.C. ' + String(u.id).slice(0, 8)),
+      documentoIdentidad: 'C.C. ' + String(u.id).slice(0, 8),
       activo: u.activo ?? true,
       fechaRegistro: new Date().toISOString()
     };
@@ -579,7 +593,6 @@ export const api = {
     telefono?: string;
     direccion?: string;
     razonSocial?: string;
-    nit?: string;
   }): Promise<User> {
     const res = await fetch(`${API_BASE}/admin/usuarios/${id}`, {
       method: 'PUT',
@@ -594,7 +607,7 @@ export const api = {
       rol: u.rol,
       telefono: u.telefono || '',
       direccion: u.direccion || '',
-      documentoIdentidad: u.nit || ('C.C. ' + String(u.id).slice(0, 8)),
+      documentoIdentidad: 'C.C. ' + String(u.id).slice(0, 8),
       activo: u.activo ?? true,
       fechaRegistro: new Date().toISOString()
     };
@@ -617,6 +630,27 @@ export const api = {
       headers: { ...getAuthHeader() }
     });
     await handleResponse<any>(res, 'Error al cambiar estado de usuario');
+  },
+
+  async getAdminReservas(): Promise<AdminReservation[]> {
+    const res = await fetch(`${API_BASE}/admin/reservas`, {
+      headers: { ...getAuthHeader() }
+    });
+    return handleResponse<AdminReservation[]>(res, 'Error al listar reservas administrativas');
+  },
+
+  async getAdminFacturas(): Promise<AdminInvoice[]> {
+    const res = await fetch(`${API_BASE}/admin/facturas`, {
+      headers: { ...getAuthHeader() }
+    });
+    return handleResponse<AdminInvoice[]>(res, 'Error al listar facturas administrativas');
+  },
+
+  async getAdminPagos(): Promise<AdminPayment[]> {
+    const res = await fetch(`${API_BASE}/admin/pagos`, {
+      headers: { ...getAuthHeader() }
+    });
+    return handleResponse<AdminPayment[]>(res, 'Error al listar pagos administrativos');
   },
 
   async resetDemoData(): Promise<void> {

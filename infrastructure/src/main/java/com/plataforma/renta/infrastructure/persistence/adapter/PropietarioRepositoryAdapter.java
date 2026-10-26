@@ -49,11 +49,6 @@ public class PropietarioRepositoryAdapter implements PropietarioRepository {
     }
 
     @Override
-    public Optional<Propietario> findByNit(String nit) {
-        return springRepo.findByNit(nit).map(mapper::toDomain);
-    }
-
-    @Override
     public List<UUID> findHerramientaIdsByPropietarioId(UUID propietarioId) {
         return herramientaRepo.findByPropietarioUsuarioId(propietarioId).stream()
                 .map(HerramientaEntity::getId)

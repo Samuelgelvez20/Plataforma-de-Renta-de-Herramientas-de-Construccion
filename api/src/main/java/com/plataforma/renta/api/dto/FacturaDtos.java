@@ -16,6 +16,17 @@ public class FacturaDtos {
             BigDecimal total,
             String datosEmisor,
             String datosReceptor,
-            Instant fechaEmision
-    ) {}
+            Instant fechaEmision,
+            String estado,
+            String descripcionDano,
+            String herramientaNombre,
+            String concepto
+    ) {
+        public FacturaResponse(UUID id, UUID reservaId, String numeroFactura, String tipo,
+                               BigDecimal subtotal, BigDecimal iva, BigDecimal total,
+                               String datosEmisor, String datosReceptor, Instant fechaEmision) {
+            this(id, reservaId, numeroFactura, tipo, subtotal, iva, total, datosEmisor, datosReceptor, fechaEmision,
+                 "PAGADA", null, null, null);
+        }
+    }
 }

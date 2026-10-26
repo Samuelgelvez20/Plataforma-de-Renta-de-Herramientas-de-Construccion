@@ -39,19 +39,22 @@ public class ReservaService {
     private final ConfiguracionFiscalRepository configuracionFiscalRepository;
     private final DisponibilidadRepository disponibilidadRepository;
     private final PagoRepository pagoRepository;
+    private final FacturaService facturaService;
 
     public ReservaService(ReservaRepository reservaRepository,
                           HerramientaRepository herramientaRepository,
                           AdvisoryLockService advisoryLockService,
                           ConfiguracionFiscalRepository configuracionFiscalRepository,
                           DisponibilidadRepository disponibilidadRepository,
-                          PagoRepository pagoRepository) {
+                          PagoRepository pagoRepository,
+                          FacturaService facturaService) {
         this.reservaRepository = reservaRepository;
         this.herramientaRepository = herramientaRepository;
         this.advisoryLockService = advisoryLockService;
         this.configuracionFiscalRepository = configuracionFiscalRepository;
         this.disponibilidadRepository = disponibilidadRepository;
         this.pagoRepository = pagoRepository;
+        this.facturaService = facturaService;
     }
 
     @Transactional
@@ -311,9 +314,14 @@ public class ReservaService {
             List<UUID> misHerramientas = herramientaRepository.findByPropietarioId(currentUserId).stream()
                     .map(Herramienta::getId)
                     .toList();
-            boolean esPropietario = r.getDetalles().stream().anyMatch(d -> misHerramientas.contains(d.getHerramientaId()));
+            boolean esPropietario = r.getDetalles() != null && r.getDetalles().stream().anyMatch(d -> misHerramientas.contains(d.getHerramientaId()));
             boolean esCliente = r.getClienteId().equals(currentUserId);
-            if (!esPropietario && !esCliente) {
+
+            if (presentaDanos || (costoReparacion != null && costoReparacion.compareTo(BigDecimal.ZERO) > 0)) {
+                if (!esPropietario) {
+                    throw new OperacionInvalidaException("No autorizado: solo el propietario de la herramienta o un administrador puede registrar daños y costos de reparación");
+                }
+            } else if (!esPropietario && !esCliente) {
                 throw new OperacionInvalidaException("No autorizado: no es el propietario de la herramienta ni el cliente titular de la reserva para registrar la devolución");
             }
         }
@@ -325,13 +333,21 @@ public class ReservaService {
         r.setObservacionPropietario(observaciones);
 
         if (aceptada) {
-            r.finalizar(Instant.now());
+            if (r.getEstado() != ReservaEstado.FINALIZADA) {
+                r.finalizar(Instant.now());
+            }
             r.setEstadoDevolucion(presentaDanos ? "ACEPTADA_CON_DANOS" : "ACEPTADA");
         } else {
             r.setEstadoDevolucion("RECHAZADA_POR_DANOS");
         }
 
-        return reservaRepository.save(r);
+        Reserva guardada = reservaRepository.save(r);
+
+        if (presentaDanos && costoReparacion != null && costoReparacion.compareTo(BigDecimal.ZERO) > 0 && facturaService != null) {
+            facturaService.emitirFacturaReparacion(guardada, Dinero.cop(costoReparacion), descripcionDano);
+        }
+
+        return guardada;
     }
 
     @Transactional

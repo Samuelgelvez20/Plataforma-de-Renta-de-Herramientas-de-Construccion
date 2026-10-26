@@ -24,10 +24,17 @@ public class FacturaController {
 
     private final FacturaService facturaService;
     private final AuthService authService;
+    private final com.plataforma.renta.domain.port.out.ReservaRepository reservaRepository;
+    private final com.plataforma.renta.domain.port.out.HerramientaRepository herramientaRepository;
 
-    public FacturaController(FacturaService facturaService, AuthService authService) {
+    public FacturaController(FacturaService facturaService,
+                             AuthService authService,
+                             com.plataforma.renta.domain.port.out.ReservaRepository reservaRepository,
+                             com.plataforma.renta.domain.port.out.HerramientaRepository herramientaRepository) {
         this.facturaService = facturaService;
         this.authService = authService;
+        this.reservaRepository = reservaRepository;
+        this.herramientaRepository = herramientaRepository;
     }
 
     @GetMapping
@@ -57,6 +64,29 @@ public class FacturaController {
     }
 
     private FacturaResponse toResponse(Factura f) {
+        String herramientaNombre = "Equipo de Construcción";
+        if (f.getReservaId() != null) {
+            try {
+                var reserva = reservaRepository.findById(f.getReservaId());
+                if (reserva.isPresent() && reserva.get().getDetalles() != null && !reserva.get().getDetalles().isEmpty()) {
+                    var herramientaId = reserva.get().getDetalles().get(0).getHerramientaId();
+                    var herramienta = herramientaRepository.findById(herramientaId);
+                    if (herramienta.isPresent()) {
+                        herramientaNombre = herramienta.get().getNombre();
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        String concepto;
+        if (f.getTipo() == com.plataforma.renta.domain.model.FacturaTipo.REPARACION) {
+            concepto = "Costos de reparación de " + herramientaNombre;
+        } else if (f.getTipo() == com.plataforma.renta.domain.model.FacturaTipo.NOTA_CREDITO) {
+            concepto = "Nota de crédito por reembolso";
+        } else {
+            concepto = "Alquiler de " + herramientaNombre;
+        }
+
         return new FacturaResponse(
                 f.getId(),
                 f.getReservaId(),
@@ -67,7 +97,11 @@ public class FacturaController {
                 f.getTotal().getMonto(),
                 f.getDatosEmisor(),
                 f.getDatosReceptor(),
-                f.getFechaEmision()
+                f.getFechaEmision(),
+                f.getEstado(),
+                f.getDescripcionDano(),
+                herramientaNombre,
+                concepto
         );
     }
 }

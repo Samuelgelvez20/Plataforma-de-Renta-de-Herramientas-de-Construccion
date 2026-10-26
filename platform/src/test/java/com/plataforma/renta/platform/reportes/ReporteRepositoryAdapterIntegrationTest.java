@@ -120,8 +120,8 @@ public class ReporteRepositoryAdapterIntegrationTest {
         UUID provUId = UUID.randomUUID();
         jdbcTemplate.update("INSERT INTO usuario (id, email, password_hash, rol, nombre, apellido, telefono, activo) VALUES (?, ?, 'hash', 'PROPIETARIO', 'Prov', 'Ctrl', '+57300', true)",
                 provUId, "prov.ctrl." + provUId + "@test.com");
-        jdbcTemplate.update("INSERT INTO propietario (usuario_id, nit, razon_social, direccion_fiscal, regimen, municipio, departamento) VALUES (?, ?, 'Ctrl SAS', 'Dir', 'COMUN', 'BOG', 'CUN')",
-                provUId, "999" + UUID.randomUUID().toString().substring(0, 6) + "-1");
+        jdbcTemplate.update("INSERT INTO propietario (usuario_id, razon_social, direccion_fiscal, regimen, municipio, departamento) VALUES (?, 'Ctrl SAS', 'Dir', 'COMUN', 'BOG', 'CUN')",
+                provUId);
 
         UUID hId = UUID.randomUUID();
         jdbcTemplate.update("INSERT INTO herramienta (id, categoria_id, propietario_id, nombre, precio_dia, cantidad_total, cantidad_disponible) VALUES (?, ?, ?, 'Herramienta Test Ranking', 50000.00, 5, 5)",

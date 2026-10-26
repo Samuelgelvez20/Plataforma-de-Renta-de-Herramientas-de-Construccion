@@ -9,6 +9,4 @@ import java.util.UUID;
 
 @Repository
 public interface SpringDataPropietarioRepository extends JpaRepository<PropietarioEntity, UUID> {
-
-    Optional<PropietarioEntity> findByNit(String nit);
 }

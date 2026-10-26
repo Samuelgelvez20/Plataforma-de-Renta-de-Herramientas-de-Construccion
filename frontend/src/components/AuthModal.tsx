@@ -6,28 +6,6 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-/**
- * Validador oficial del Dígito de Verificación (DV) de NIT según algoritmo módulo 11 de la DIAN.
- * Coincide 100% con la regla del Value Object Nit.java del backend.
- */
-export function validarNitDian(nit: string): boolean {
-  if (!nit || typeof nit !== 'string') return false;
-  const trimmed = nit.trim().toUpperCase();
-  if (!/^\d{1,15}-\d$/.test(trimmed)) return false;
-
-  const [numero, dvStr] = trimmed.split('-');
-  const dvIngresado = parseInt(dvStr, 10);
-  const pesos = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
-  let suma = 0;
-  for (let i = 0; i < numero.length; i++) {
-    const digito = parseInt(numero.charAt(numero.length - 1 - i), 10);
-    suma += digito * pesos[i];
-  }
-  const residuo = suma % 11;
-  const dvCalculado = residuo > 1 ? 11 - residuo : residuo;
-  return dvCalculado === dvIngresado;
-}
-
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   const { login, register, isDemoEnabled } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
@@ -37,14 +15,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
   const [razonSocial, setRazonSocial] = useState('');
-  const [nit, setNit] = useState('');
   const [direccionFiscal, setDireccionFiscal] = useState('');
   const [direccionEntregaDefault, setDireccionEntregaDefault] = useState('');
   const [rol, setRol] = useState<'CLIENTE' | 'PROPIETARIO'>('CLIENTE');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const isNitValid = rol === 'PROPIETARIO' && nit.trim().length > 0 ? validarNitDian(nit) : true;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,14 +37,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
       if (rol === 'PROPIETARIO') {
         if (!razonSocial.trim()) {
           setErrorMsg('La razón social es obligatoria para cuentas de propietario');
-          return;
-        }
-        if (!nit.trim()) {
-          setErrorMsg('El NIT es obligatorio para cuentas de propietario');
-          return;
-        }
-        if (!validarNitDian(nit)) {
-          setErrorMsg('Formato de NIT inválido o dígito de verificación incorrecto según DIAN (formato esperado: NÚMERO-DV, ej: 901500001-1)');
           return;
         }
       }
@@ -108,7 +75,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
           rol,
           telefono: telefono.trim(),
           razonSocial: rol === 'PROPIETARIO' ? (razonSocial.trim() || `${nombre.trim()} ${apellido.trim()}`) : undefined,
-          nit: rol === 'PROPIETARIO' ? nit.trim() : undefined,
           direccionFiscal: rol === 'PROPIETARIO' ? (direccionFiscal.trim() || 'Dirección fiscal principal') : undefined,
           direccionEntregaDefault: rol === 'CLIENTE' ? (direccionEntregaDefault.trim() || 'Dirección de obra principal') : undefined
         });
@@ -221,27 +187,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                     />
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block font-semibold text-neutral-700">NIT con Dígito de Verificación (DIAN) *</label>
-                      {nit.trim().length > 0 && (
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isNitValid ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                          {isNitValid ? '✓ DV Válido' : '✗ DV Inválido'}
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={nit}
-                      onChange={(e) => setNit(e.target.value)}
-                      placeholder="Ej. 901500001-1"
-                      className="w-full p-2 bg-white border border-neutral-300 rounded-lg font-mono focus:outline-hidden focus:ring-2 focus:ring-amber-500"
-                    />
-                    <p className="mt-1 text-[10px] text-neutral-500">
-                      Formato obligatorio NÚMERO-DV con verificación oficial módulo 11 (Ejemplo de prueba: <span className="font-mono font-semibold">901500001-1</span>).
-                    </p>
-                  </div>
+
 
                   <div>
                     <label className="block font-semibold text-neutral-700 mb-1">Dirección Fiscal Principal</label>

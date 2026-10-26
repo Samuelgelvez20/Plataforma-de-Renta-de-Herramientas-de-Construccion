@@ -46,10 +46,39 @@ public class PagoController {
     @Operation(summary = "Procesar pago", description = "Confirma el pago de una reserva emitiendo factura electrónica con control de idempotencia")
     public ResponseEntity<ProcesarPagoResponse> procesarPago(@Valid @RequestBody ProcesarPagoRequest req, Authentication auth) {
         Usuario actor = authService.obtenerUsuarioPorEmail(auth.getName());
-        Reserva reserva = reservaService.obtenerPorId(req.reservaId());
 
         String proveedor = req.metodo() != null ? req.metodo() : "SIMULADO";
         String txId = req.claveIdempotencia() != null ? req.claveIdempotencia() : UUID.randomUUID().toString();
+
+        if (req.facturaId() != null) {
+            Pago pagoRep;
+            try {
+                pagoRep = pagoService.confirmarPagoReparacion(req.facturaId(), proveedor, txId, actor.getId(), actor.getRol());
+            } catch (PagoYaConfirmadoException ex) {
+                Pago existingPago = pagoService.listarTodos().stream()
+                        .filter(p -> req.facturaId().equals(p.getFacturaId()) && p.getEstado() == PagoEstado.COMPLETADO)
+                        .findFirst()
+                        .orElseThrow(() -> ex);
+                Factura updatedFactura = facturaService.obtenerPorId(req.facturaId());
+                return ResponseEntity.ok(new ProcesarPagoResponse(
+                        toPagoResponse(existingPago),
+                        toFacturaResponse(updatedFactura),
+                        "Pago de reparación previamente confirmado (idempotente)"
+                ));
+            }
+            Factura updatedFactura = facturaService.obtenerPorId(req.facturaId());
+            return ResponseEntity.ok(new ProcesarPagoResponse(
+                    toPagoResponse(pagoRep),
+                    toFacturaResponse(updatedFactura),
+                    "Pago de reparación procesado exitosamente"
+            ));
+        }
+
+        if (req.reservaId() == null) {
+            throw new com.plataforma.renta.domain.exception.OperacionInvalidaException("Debe especificar reservaId o facturaId");
+        }
+
+        Reserva reserva = reservaService.obtenerPorId(req.reservaId());
 
         var cmd = new ConfirmarPagoCommand(
                 req.reservaId(),
@@ -63,7 +92,7 @@ public class PagoController {
             pago = pagoService.confirmarPago(cmd, actor.getId(), actor.getRol());
         } catch (PagoYaConfirmadoException ex) {
             Pago existingPago = pagoService.listarTodos().stream()
-                    .filter(p -> p.getReservaId().equals(req.reservaId()) && p.getEstado() == PagoEstado.COMPLETADO)
+                    .filter(p -> p.getReservaId().equals(req.reservaId()) && p.getEstado() == PagoEstado.COMPLETADO && p.getFacturaId() == null)
                     .findFirst()
                     .orElseThrow(() -> ex);
 
@@ -107,6 +136,14 @@ public class PagoController {
     }
 
     private FacturaResponse toFacturaResponse(Factura f) {
+        String concepto;
+        if (f.getTipo() == com.plataforma.renta.domain.model.FacturaTipo.REPARACION) {
+            concepto = "Costos de reparación";
+        } else if (f.getTipo() == com.plataforma.renta.domain.model.FacturaTipo.NOTA_CREDITO) {
+            concepto = "Nota de crédito por reembolso";
+        } else {
+            concepto = "Alquiler de herramienta y equipo";
+        }
         return new FacturaResponse(
                 f.getId(),
                 f.getReservaId(),
@@ -117,7 +154,11 @@ public class PagoController {
                 f.getTotal().getMonto(),
                 f.getDatosEmisor(),
                 f.getDatosReceptor(),
-                f.getFechaEmision()
+                f.getFechaEmision(),
+                f.getEstado(),
+                f.getDescripcionDano(),
+                null,
+                concepto
         );
     }
 }

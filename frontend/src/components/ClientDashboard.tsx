@@ -20,8 +20,10 @@ import {
   X,
   Receipt,
   Search,
-  Filter
+  Filter,
+  Wrench
 } from 'lucide-react';
+import { CheckoutPaymentModal } from './CheckoutPaymentModal';
 
 interface ClientDashboardProps {
   onPayReservation: (reservation: Reservation) => void;
@@ -49,6 +51,11 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   // Filtro interno para reservas
   const [reservationSearch, setReservationSearch] = useState('');
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | number | null>(null);
+  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
+
+  const pendingRepairs = useMemo(() => {
+    return invoices.filter(inv => inv.tipo === 'REPARACION' && inv.estado === 'PENDIENTE');
+  }, [invoices]);
 
   // Modales
   const [selectedRefundResv, setSelectedRefundResv] = useState<Reservation | null>(null);
@@ -344,6 +351,31 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             </div>
           </div>
 
+          {/* Banner de alerta: Cargos por daños y reparaciones pendientes */}
+          {pendingRepairs.length > 0 && (
+            <div className="mt-6 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-lg shrink-0">
+                  <Wrench className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-amber-200 flex items-center gap-2">
+                    <span>Atención: {pendingRepairs.length} cargo{pendingRepairs.length > 1 ? 's' : ''} pendiente{pendingRepairs.length > 1 ? 's' : ''} por daños y reparación de equipo</span>
+                  </h4>
+                  <p className="text-xs text-amber-300/80 mt-0.5">
+                    El propietario ha confirmado la devolución con reporte de daños. Revisa los detalles en «Mis facturas» y efectúa el pago para completar el cierre de tu reserva.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveTab('facturas')}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg transition-colors shrink-0 cursor-pointer shadow-xs"
+              >
+                Ver facturas de reparación
+              </button>
+            </div>
+          )}
+
           {/* =========================================================================
               2. TARJETAS DE MÉTRICAS (KPIs basados en datos reales verificables)
              ========================================================================= */}
@@ -427,7 +459,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
         {/* Pestañas de Navegación Interna */}
         <div className="flex items-center gap-2 border-b border-neutral-200 mb-6 overflow-x-auto pb-1 scrollbar-thin">
           <button
-            onClick={() => setActiveTab('reservas')}
+            onClick={() => { setActiveTab('reservas'); loadData(); }}
             className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
               activeTab === 'reservas'
                 ? 'border-[#F5A623] text-[#17191C]'
@@ -443,7 +475,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('facturas')}
+            onClick={() => { setActiveTab('facturas'); loadData(); }}
             className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
               activeTab === 'facturas'
                 ? 'border-[#F5A623] text-[#17191C]'
@@ -459,7 +491,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('reembolsos')}
+            onClick={() => { setActiveTab('reembolsos'); loadData(); }}
             className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
               activeTab === 'reembolsos'
                 ? 'border-[#F5A623] text-[#17191C]'
@@ -830,48 +862,125 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="border-b border-neutral-200 bg-neutral-50 text-neutral-600 font-semibold uppercase tracking-wider text-[11px]">
-                        <th className="py-3.5 px-4">Nº Factura</th>
-                        <th className="py-3.5 px-4">Reserva Asociada</th>
-                        <th className="py-3.5 px-4">Proveedor / Emisor</th>
-                        <th className="py-3.5 px-4 text-right">Subtotal</th>
-                        <th className="py-3.5 px-4 text-right">IVA del 19 %</th>
-                        <th className="py-3.5 px-4 text-right">Total (COP)</th>
+                        <th className="py-3.5 px-4">Comprobante y Estado</th>
+                        <th className="py-3.5 px-4">Concepto y Detalle del Cargo</th>
+                        <th className="py-3.5 px-4">Reserva</th>
+                        <th className="py-3.5 px-4">Fecha Emisión</th>
+                        <th className="py-3.5 px-4 text-right">Importe (COP)</th>
                         <th className="py-3.5 px-4 text-right">Acción</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
-                      {invoices.map((inv) => (
-                        <tr key={inv.id} className="hover:bg-neutral-50/80 transition-colors">
-                          <td className="py-3.5 px-4 font-mono font-bold text-[#17191C]">
-                            {inv.numeroFactura}
-                          </td>
-                          <td className="py-3.5 px-4 font-mono text-neutral-600">
-                            #{inv.reservaId}
-                          </td>
-                          <td className="py-3.5 px-4 text-neutral-700">
-                            {inv.propietarioNombre || 'Proveedor Maquinaria'}
-                          </td>
-                          <td className="py-3.5 px-4 text-right font-mono tabular-nums text-neutral-700">
-                            ${inv.subtotal.toLocaleString('es-CO')}
-                          </td>
-                          <td className="py-3.5 px-4 text-right font-mono tabular-nums text-neutral-700">
-                            ${inv.iva.toLocaleString('es-CO')}
-                          </td>
-                          <td className="py-3.5 px-4 text-right font-mono tabular-nums font-extrabold text-[#17191C]">
-                            ${inv.total.toLocaleString('es-CO')}
-                          </td>
-                          <td className="py-3.5 px-4 text-right">
-                            <button
-                              onClick={() => handleDownloadPdf(inv)}
-                              disabled={downloadingInvoiceId === inv.id}
-                              className="px-3 py-1.5 text-xs font-bold text-[#17191C] bg-[#F5A623] hover:bg-[#e09419] rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
-                            >
-                              <FileDown className="w-3.5 h-3.5" />
-                              <span>{downloadingInvoiceId === inv.id ? 'Descargando...' : 'Descargar PDF'}</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {invoices.map((inv) => {
+                        const isReparacion = inv.tipo === 'REPARACION';
+                        const isPendiente = inv.estado === 'PENDIENTE';
+                        const toolName = inv.herramientaNombre || (inv.reservaId && toolMap[inv.reservaId]) || 'Herramienta';
+                        const title = isReparacion
+                          ? `Costos de reparación de ${toolName}`
+                          : (inv.concepto || `Alquiler de ${toolName}`);
+
+                        return (
+                          <tr
+                            key={inv.id}
+                            className={`transition-colors ${isReparacion && isPendiente ? 'bg-amber-50/50 hover:bg-amber-50/80 border-l-4 border-l-amber-500' : 'hover:bg-neutral-50/80'}`}
+                          >
+                            <td className="py-4 px-4 align-top">
+                              <span className="font-mono font-bold text-[#17191C] block text-xs">
+                                {inv.numeroFactura}
+                              </span>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                {isReparacion ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                    REPARACIÓN
+                                  </span>
+                                ) : inv.tipo === 'NOTA_CREDITO' ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                    NOTA CRÉDITO
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                    ALQUILER
+                                  </span>
+                                )}
+
+                                {isPendiente ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-slate-950 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    <span>PENDIENTE</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1 border border-emerald-200">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    <span>PAGADA</span>
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 align-top max-w-sm">
+                              <span className="font-bold text-neutral-900 block text-xs leading-snug">
+                                {title}
+                              </span>
+                              <span className="text-[11px] text-neutral-500 block mt-0.5">
+                                Herramienta: <strong className="text-neutral-700">{toolName}</strong>
+                              </span>
+                              {isReparacion && inv.descripcionDano && (
+                                <div className="mt-2 p-2.5 rounded-lg bg-amber-100/70 border border-amber-300 text-amber-950 text-[11px] leading-relaxed">
+                                  <span className="font-bold text-amber-900 block mb-0.5 flex items-center gap-1">
+                                    <Wrench className="w-3 h-3" />
+                                    <span>Descripción del daño registrada por el propietario:</span>
+                                  </span>
+                                  <span>{inv.descripcionDano}</span>
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="py-4 px-4 align-top font-mono text-neutral-600 text-xs">
+                              <span className="bg-neutral-100 px-2 py-1 rounded text-neutral-800 font-semibold">
+                                #{inv.reservaId}
+                              </span>
+                            </td>
+
+                            <td className="py-4 px-4 align-top text-neutral-600 text-xs">
+                              {inv.fechaEmision
+                                ? new Date(inv.fechaEmision).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })
+                                : '—'}
+                            </td>
+
+                            <td className="py-4 px-4 align-top text-right font-mono tabular-nums">
+                              <span className="font-extrabold text-[#17191C] text-sm block">
+                                ${inv.total.toLocaleString('es-CO')} COP
+                              </span>
+                              {inv.iva > 0 && (
+                                <span className="text-[10px] text-neutral-500 block">
+                                  IVA: ${inv.iva.toLocaleString('es-CO')}
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="py-4 px-4 align-top text-right">
+                              {isReparacion && isPendiente ? (
+                                <button
+                                  onClick={() => setPayingInvoice(inv)}
+                                  className="px-4 py-2 text-xs font-extrabold text-slate-950 bg-amber-500 hover:bg-amber-600 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-sm active:scale-95"
+                                >
+                                  <CreditCard className="w-3.5 h-3.5" />
+                                  <span>Pagar</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleDownloadPdf(inv)}
+                                  disabled={downloadingInvoiceId === inv.id}
+                                  className="px-3 py-1.5 text-xs font-bold text-[#17191C] bg-[#F5A623] hover:bg-[#e09419] rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+                                >
+                                  <FileDown className="w-3.5 h-3.5" />
+                                  <span>{downloadingInvoiceId === inv.id ? 'Descargando...' : 'Descargar PDF'}</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1135,6 +1244,19 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal para pagar factura de reparación */}
+      {payingInvoice && (
+        <CheckoutPaymentModal
+          invoice={payingInvoice}
+          onClose={() => setPayingInvoice(null)}
+          onPaymentSuccess={() => {
+            setPayingInvoice(null);
+            toast.success('Pago de costos de reparación procesado exitosamente', 'Factura Pagada');
+            loadData();
+          }}
+        />
       )}
     </div>
   );

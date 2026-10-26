@@ -8,6 +8,7 @@ import com.plataforma.renta.domain.exception.MontoInvalidoException;
 import com.plataforma.renta.domain.exception.MontoReembolsoInvalidoException;
 import com.plataforma.renta.domain.exception.OperacionInvalidaException;
 import com.plataforma.renta.domain.exception.PagoYaConfirmadoException;
+import com.plataforma.renta.domain.model.Factura;
 import com.plataforma.renta.domain.model.Pago;
 import com.plataforma.renta.domain.model.PagoEstado;
 import com.plataforma.renta.domain.model.Reserva;
@@ -395,4 +396,39 @@ public class PagoService {
                 .orElseThrow(() -> new EntidadNoEncontradaException("Pago no encontrado: " + id));
     }
 
+    @Transactional
+    public Pago confirmarPagoReparacion(UUID facturaId, String proveedorPago, String transaccionId, UUID currentUserId, UserRol currentUserRol) {
+        Factura factura = facturaRepository.findById(facturaId)
+                .orElseThrow(() -> new EntidadNoEncontradaException("Factura no encontrada: " + facturaId));
+
+        if (factura.getTipo() != com.plataforma.renta.domain.model.FacturaTipo.REPARACION) {
+            throw new OperacionInvalidaException("La factura no corresponde a un cargo por reparación");
+        }
+
+        Reserva reserva = reservaRepository.findByIdForUpdate(factura.getReservaId())
+                .orElseThrow(() -> new EntidadNoEncontradaException("Reserva no encontrada: " + factura.getReservaId()));
+
+        if (currentUserRol != UserRol.ADMIN && (currentUserRol != UserRol.CLIENTE || !reserva.getClienteId().equals(currentUserId))) {
+            throw new OperacionInvalidaException("No autorizado: solo el cliente titular o un administrador puede pagar esta factura de reparación");
+        }
+
+        if ("PAGADA".equalsIgnoreCase(factura.getEstado())) {
+            throw new PagoYaConfirmadoException("La factura de reparación ya se encuentra pagada");
+        }
+
+        if (pagoRepository.existsByFacturaIdAndEstado(facturaId, PagoEstado.COMPLETADO)) {
+            throw new PagoYaConfirmadoException("Ya existe un pago completado para esta factura de reparación");
+        }
+
+        String proveedor = (proveedorPago != null && !proveedorPago.isBlank()) ? proveedorPago : "SIMULADO";
+        String txId = (transaccionId != null && !transaccionId.isBlank()) ? transaccionId : UUID.randomUUID().toString();
+
+        Pago pago = Pago.reparacion(factura.getReservaId(), factura.getId(), factura.getTotal(), proveedor, txId);
+        Pago guardado = pagoRepository.save(pago);
+
+        Factura facturaPagada = factura.conEstadoPagada(guardado.getId());
+        facturaRepository.save(facturaPagada);
+
+        return guardado;
+    }
 }

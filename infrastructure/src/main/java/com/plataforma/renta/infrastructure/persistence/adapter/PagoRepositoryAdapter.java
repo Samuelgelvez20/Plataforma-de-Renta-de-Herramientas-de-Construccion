@@ -19,13 +19,16 @@ public class PagoRepositoryAdapter implements PagoRepository {
 
     private final SpringDataPagoRepository springRepo;
     private final SpringDataReservaRepository reservaRepo;
+    private final com.plataforma.renta.infrastructure.persistence.repository.SpringDataFacturaRepository facturaRepo;
     private final PagoMapper mapper;
 
     public PagoRepositoryAdapter(SpringDataPagoRepository springRepo,
                                  SpringDataReservaRepository reservaRepo,
+                                 com.plataforma.renta.infrastructure.persistence.repository.SpringDataFacturaRepository facturaRepo,
                                  PagoMapper mapper) {
         this.springRepo = springRepo;
         this.reservaRepo = reservaRepo;
+        this.facturaRepo = facturaRepo;
         this.mapper = mapper;
     }
 
@@ -37,6 +40,9 @@ public class PagoRepositoryAdapter implements PagoRepository {
         }
         if (pago.getPagoOriginalId() != null) {
             entity.setPagoOriginal(springRepo.getReferenceById(pago.getPagoOriginalId()));
+        }
+        if (pago.getFacturaId() != null) {
+            entity.setFactura(facturaRepo.getReferenceById(pago.getFacturaId()));
         }
         return mapper.toDomain(springRepo.saveAndFlush(entity));
     }
@@ -101,6 +107,16 @@ public class PagoRepositoryAdapter implements PagoRepository {
     @Override
     public boolean existsByReservaId(UUID reservaId) {
         return springRepo.existsByReservaId(reservaId);
+    }
+
+    @Override
+    public boolean existsByFacturaIdAndEstado(UUID facturaId, com.plataforma.renta.domain.model.PagoEstado estado) {
+        return springRepo.existsByFacturaIdAndEstado(facturaId, com.plataforma.renta.infrastructure.persistence.entity.PagoEstado.valueOf(estado.name()));
+    }
+
+    @Override
+    public Optional<Pago> findByFacturaId(UUID facturaId) {
+        return springRepo.findByFacturaId(facturaId).map(mapper::toDomain);
     }
 
     @Override

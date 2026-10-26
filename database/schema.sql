@@ -642,7 +642,6 @@ CREATE TABLE public.pago (
 CREATE TABLE public.propietario (
     usuario_id uuid NOT NULL,
     razon_social character varying(200) NOT NULL,
-    nit character varying(20) NOT NULL,
     direccion_fiscal text NOT NULL,
     telefono_contacto character varying(20),
     regimen character varying(30) NOT NULL,
@@ -789,12 +788,7 @@ ALTER TABLE ONLY public.pago
     ADD CONSTRAINT pago_pkey PRIMARY KEY (id);
 
 
---
--- Name: propietario propietario_nit_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
-ALTER TABLE ONLY public.propietario
-    ADD CONSTRAINT propietario_nit_key UNIQUE (nit);
 
 
 --

@@ -1,7 +1,6 @@
 package com.plataforma.renta.domain.model;
 
 import com.plataforma.renta.domain.value.Email;
-import com.plataforma.renta.domain.value.Nit;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -10,7 +9,6 @@ public final class Propietario {
 
     private final UUID id;
     private final Email email;
-    private final Nit nit;
     private final String razonSocial;
     private final String direccionFiscal;
     private final String telefonoContacto;
@@ -19,14 +17,13 @@ public final class Propietario {
     private final String departamento;
     private final Instant verificadoEn;
 
-    public Propietario(UUID id, Email email, Nit nit,
+    public Propietario(UUID id, Email email,
                        String razonSocial, String direccionFiscal,
                        String telefonoContacto, String regimen,
                        String municipio, String departamento,
                        Instant verificadoEn) {
         this.id = id;
         this.email = email;
-        this.nit = nit;
         this.razonSocial = razonSocial;
         this.direccionFiscal = direccionFiscal;
         this.telefonoContacto = telefonoContacto;
@@ -38,7 +35,6 @@ public final class Propietario {
 
     public UUID getId() { return id; }
     public Email getEmail() { return email; }
-    public Nit getNit() { return nit; }
     public String getRazonSocial() { return razonSocial; }
     public String getDireccionFiscal() { return direccionFiscal; }
     public String getTelefonoContacto() { return telefonoContacto; }

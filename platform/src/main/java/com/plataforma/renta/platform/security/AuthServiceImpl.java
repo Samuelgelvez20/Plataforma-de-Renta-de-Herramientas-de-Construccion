@@ -12,7 +12,6 @@ import com.plataforma.renta.domain.port.out.PropietarioRepository;
 import com.plataforma.renta.domain.port.out.ReservaRepository;
 import com.plataforma.renta.domain.port.out.UsuarioRepository;
 import com.plataforma.renta.domain.value.Email;
-import com.plataforma.renta.domain.value.Nit;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -112,16 +111,11 @@ public class AuthServiceImpl implements AuthService {
 
         // Crear perfil correspondiente
         if (usuario.getRol() == UserRol.PROPIETARIO) {
-            String nitStr = cmd.nit() != null && !cmd.nit().isBlank() ? cmd.nit() : "901500000-4";
-            if (propietarioRepository.findByNit(nitStr).isPresent()) {
-                throw new OperacionInvalidaException("El NIT '" + nitStr + "' ya se encuentra registrado por otra empresa");
-            }
             Propietario propietario = new Propietario(
                     usuarioId,
                     Email.of(cmd.email()),
-                    Nit.of(nitStr),
-                    cmd.razonSocial() != null ? cmd.razonSocial() : cmd.nombre() + " " + cmd.apellido(),
-                    cmd.direccionFiscal() != null ? cmd.direccionFiscal() : "Dirección fiscal principal",
+                    cmd.razonSocial() != null && !cmd.razonSocial().isBlank() ? cmd.razonSocial() : cmd.nombre() + " " + cmd.apellido(),
+                    cmd.direccionFiscal() != null && !cmd.direccionFiscal().isBlank() ? cmd.direccionFiscal() : "Dirección fiscal principal",
                     cmd.telefono(),
                     "COMUN",
                     "Bucaramanga",
@@ -189,7 +183,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public Usuario actualizarUsuario(UUID id, String nombre, String apellido, String telefono, String direccion, String razonSocial, String nit) {
+    public Usuario actualizarUsuario(UUID id, String nombre, String apellido, String telefono, String direccion, String razonSocial) {
         Usuario usuario = obtenerUsuarioPorId(id);
         Usuario modificado = usuario.conDatos(nombre, apellido, telefono);
         modificado = usuarioRepository.save(modificado);
@@ -198,17 +192,9 @@ public class AuthServiceImpl implements AuthService {
             Optional<Propietario> propOpt = propietarioRepository.findById(id);
             if (propOpt.isPresent()) {
                 Propietario p = propOpt.get();
-                Nit nuevoNit = p.getNit();
-                if (nit != null && !nit.isBlank() && !nit.equals(p.getNit().getValor())) {
-                    if (propietarioRepository.findByNit(nit).isPresent()) {
-                        throw new OperacionInvalidaException("El NIT '" + nit + "' ya se encuentra registrado por otra empresa");
-                    }
-                    nuevoNit = Nit.of(nit);
-                }
                 Propietario actualizado = new Propietario(
                         p.getId(),
                         p.getEmail(),
-                        nuevoNit,
                         razonSocial != null && !razonSocial.isBlank() ? razonSocial : p.getRazonSocial(),
                         direccion != null && !direccion.isBlank() ? direccion : p.getDireccionFiscal(),
                         telefono != null && !telefono.isBlank() ? telefono : p.getTelefonoContacto(),

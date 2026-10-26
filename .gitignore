@@ -26,3 +26,7 @@ release.properties
 testcontainers.properties
 platform/src/test-disabled/
 platform/src/test-integration/
+
+# E2E Automation
+e2e/node_modules/
+e2e/evidencias/

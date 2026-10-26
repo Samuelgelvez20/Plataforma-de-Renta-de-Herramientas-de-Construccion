@@ -36,5 +36,9 @@ public interface PagoRepository {
 
     boolean existsByReservaId(UUID reservaId);
 
+    boolean existsByFacturaIdAndEstado(UUID facturaId, PagoEstado estado);
+
+    Optional<Pago> findByFacturaId(UUID facturaId);
+
     List<Pago> findAll();
 }

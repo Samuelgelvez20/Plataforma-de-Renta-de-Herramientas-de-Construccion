@@ -8,7 +8,6 @@ import com.plataforma.renta.domain.model.*;
 import com.plataforma.renta.domain.port.out.*;
 import com.plataforma.renta.domain.value.Dinero;
 import com.plataforma.renta.domain.value.Email;
-import com.plataforma.renta.domain.value.Nit;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -94,6 +93,9 @@ class ReembolsoResolucionIntegrationTest {
     private PagoRepository pagoRepository;
 
     @Autowired
+    private FacturaRepository facturaRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -115,7 +117,7 @@ class ReembolsoResolucionIntegrationTest {
         );
         usuarioRepository.save(propUser);
         propietarioRepository.save(new Propietario(
-                propId, propUser.getEmail(), Nit.of("900123450-4"), "Maquinaria SAS",
+                propId, propUser.getEmail(), "Maquinaria SAS",
                 "Calle 1", "+57300111", "COMUN", "Bogota", "Cundinamarca", null
         ));
 
@@ -196,7 +198,7 @@ class ReembolsoResolucionIntegrationTest {
         );
         String cliToken = objectMapper.readTree(cliLoginResp.body()).get("token").asText();
 
-        // Intento 1: Cliente intenta resolver su propio reembolso -> DEBE SER RECHAZADO (400)
+        // Intento 1: Cliente intenta resolver su propio reembolso -> DEBE SER RECHAZADO CON 403 FORBIDDEN POR SEGURIDAD HTTP
         HttpResponse<String> cliResolverResp = client.send(
                 HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/reembolsos/" + reembolsoId + "/resolver"))
                         .header("Content-Type", "application/json")
@@ -205,7 +207,7 @@ class ReembolsoResolucionIntegrationTest {
                         .build(),
                 HttpResponse.BodyHandlers.ofString()
         );
-        assertThat(cliResolverResp.statusCode()).isGreaterThanOrEqualTo(400);
+        assertThat(cliResolverResp.statusCode()).isEqualTo(403);
 
         // Intento 2: Propietario titular rechaza la solicitud -> DEBE SER EXITOSO (200) y persistir
         HttpResponse<String> propResolverResp = client.send(
@@ -264,5 +266,198 @@ class ReembolsoResolucionIntegrationTest {
                 HttpResponse.BodyHandlers.ofString()
         );
         assertThat(reintentoResp.statusCode()).isGreaterThanOrEqualTo(400);
+    }
+
+    @Test
+    @DisplayName("SEC-02B: Resolución de reembolsos sin token o con token inválido retorna 401 Unauthorized")
+    void resolucionSinTokenOConTokenInvalidoRetorna401() throws Exception {
+        int puerto = environment.getRequiredProperty("local.server.port", Integer.class);
+        String baseUrl = "http://localhost:" + puerto;
+        HttpClient client = HttpClient.newHttpClient();
+        UUID fakeId = UUID.randomUUID();
+
+        // 1. Sin cabecera Authorization -> 401 Unauthorized
+        HttpResponse<String> sinAuthResp = client.send(
+                HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/reembolsos/" + fakeId + "/resolver"))
+                        .header("Content-Type", "application/json")
+                        .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("aprobar", true))))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
+        assertThat(sinAuthResp.statusCode()).isEqualTo(401);
+
+        // 2. Con token malformado/inválido -> 401 Unauthorized
+        HttpResponse<String> invalidTokenResp = client.send(
+                HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/reembolsos/" + fakeId + "/resolver"))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer token-invalido-o-expirado")
+                        .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("aprobar", true))))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
+        assertThat(invalidTokenResp.statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    @DisplayName("SEC-02C: Propietario ajeno recibe 400 Bad Request y Administrador aprueba legítimamente (200 OK)")
+    void propietarioAjenoRecibe400YAdminPuedeAprobar() throws Exception {
+        int puerto = environment.getRequiredProperty("local.server.port", Integer.class);
+        String baseUrl = "http://localhost:" + puerto;
+        HttpClient client = HttpClient.newHttpClient();
+
+        // 1. Crear Propietario A (titular de la herramienta de la reserva)
+        String propAEmail = "prop.a." + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String propAPass = "PropPass123!";
+        UUID propAId = UUID.randomUUID();
+        Usuario propAUser = new Usuario(
+                propAId, Email.of(propAEmail), passwordEncoder.encode(propAPass),
+                UserRol.PROPIETARIO, "Carlos", "PropietarioA", "+57300111", true, Instant.now(), Instant.now()
+        );
+        usuarioRepository.save(propAUser);
+        propietarioRepository.save(new Propietario(
+                propAId, propAUser.getEmail(), "Maquinaria A",
+                "Calle 1", "+57300111", "COMUN", "Bogota", "Cundinamarca", null
+        ));
+
+        // 2. Crear Propietario B (ajeno: posee otra herramienta no vinculada a la reserva)
+        String propBEmail = "prop.b." + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String propBPass = "PropPass123!";
+        UUID propBId = UUID.randomUUID();
+        Usuario propBUser = new Usuario(
+                propBId, Email.of(propBEmail), passwordEncoder.encode(propBPass),
+                UserRol.PROPIETARIO, "Bernardo", "PropietarioB", "+57300333", true, Instant.now(), Instant.now()
+        );
+        usuarioRepository.save(propBUser);
+        propietarioRepository.save(new Propietario(
+                propBId, propBUser.getEmail(), "Maquinaria B",
+                "Calle 3", "+57300333", "COMUN", "Bogota", "Cundinamarca", null
+        ));
+
+        // 3. Crear Administrador
+        String adminEmail = "admin.reemb." + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String adminPass = "AdminPass123!";
+        UUID adminId = UUID.randomUUID();
+        Usuario adminUser = new Usuario(
+                adminId, Email.of(adminEmail), passwordEncoder.encode(adminPass),
+                UserRol.ADMIN, "Super", "Admin", "+57300999", true, Instant.now(), Instant.now()
+        );
+        usuarioRepository.save(adminUser);
+
+        // 4. Crear Cliente
+        String cliEmail = "cli.test." + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String cliPass = "CliPass123!";
+        UUID cliId = UUID.randomUUID();
+        Usuario cliUser = new Usuario(
+                cliId, Email.of(cliEmail), passwordEncoder.encode(cliPass),
+                UserRol.CLIENTE, "Diego", "Cliente", "+57300444", true, Instant.now(), Instant.now()
+        );
+        usuarioRepository.save(cliUser);
+        clienteRepository.save(new Cliente(
+                cliId, cliUser.getEmail(), "Diego", "Cliente", "+57300444", "Calle 4", "{}"
+        ));
+
+        // 5. Herramienta de Propietario A
+        Categoria cat = categoriaRepository.findAll().stream().findFirst().orElseThrow();
+        UUID herrAId = UUID.randomUUID();
+        herramientaRepository.save(new Herramienta(
+                herrAId, cat.getId(), propAId,
+                "Andamio Tubular A", "Desc", "Layher", "AND-01",
+                Dinero.cop(new BigDecimal("70000")), 3, HerramientaPubEstado.PUBLICADA,
+                new BigDecimal("19.00"), true, Instant.now(), Instant.now()
+        ));
+
+        // 6. Reserva confirmada y pagada para Herramienta de Propietario A
+        UUID reservaId = UUID.randomUUID();
+        Reserva reserva = new Reserva(
+                reservaId, cliId, ReservaEstado.CONFIRMADA,
+                LocalDate.now().plusDays(1), LocalDate.now().plusDays(2),
+                Instant.now(), null
+        );
+        reserva.agregarDetalle(DetalleReserva.crear(
+                reservaId, herrAId, 1, Dinero.cop(new BigDecimal("70000")),
+                LocalDate.now().plusDays(1), LocalDate.now().plusDays(2),
+                new BigDecimal("19.00"), true
+        ));
+        reservaRepository.save(reserva);
+
+        UUID pagoOriginalId = UUID.randomUUID();
+        pagoRepository.save(new Pago(
+                pagoOriginalId, reservaId, null, PagoEstado.COMPLETADO,
+                "SIMULADO", "TX-AJENO-123", Dinero.cop(new BigDecimal("83300")),
+                "Pago alquiler andamio", Instant.now(), Instant.now()
+        ));
+
+        facturaRepository.save(Factura.original(
+                reservaId, "F-TEST-AJENO-01",
+                Dinero.cop(new BigDecimal("70000")),
+                Dinero.cop(new BigDecimal("13300")),
+                Dinero.cop(new BigDecimal("83300")),
+                new BigDecimal("19.00"), true,
+                "{\"emisor\":\"Propietario A\"}", "{\"receptor\":\"Diego Cliente\"}"
+        ));
+
+        UUID reembolsoId = UUID.randomUUID();
+        pagoRepository.save(new Pago(
+                reembolsoId, reservaId, pagoOriginalId, PagoEstado.PENDIENTE,
+                "SIMULADO", null, Dinero.cop(new BigDecimal("83300")),
+                "Solicitud de reembolso por cancelación", Instant.now(), Instant.now()
+        ));
+
+        // Logins
+        HttpResponse<String> propBLoginResp = client.send(
+                HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/auth/login"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("email", propBEmail, "password", propBPass))))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
+        String propBToken = objectMapper.readTree(propBLoginResp.body()).get("token").asText();
+
+        HttpResponse<String> adminLoginResp = client.send(
+                HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/auth/login"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("email", adminEmail, "password", adminPass))))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
+        String adminToken = objectMapper.readTree(adminLoginResp.body()).get("token").asText();
+
+        // 7. Intento Propietario B (ajeno): Pasa HTTP @PreAuthorize pero falla en servicio -> 400 Bad Request
+        HttpResponse<String> propBAjenoResp = client.send(
+                HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/reembolsos/" + reembolsoId + "/resolver"))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer " + propBToken)
+                        .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("aprobar", true))))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
+        assertThat(propBAjenoResp.statusCode()).isEqualTo(400);
+        assertThat(propBAjenoResp.body()).contains("No autorizado: solo el propietario relacionado o un administrador");
+
+        // El reembolso debe seguir PENDIENTE
+        assertThat(pagoRepository.findById(reembolsoId).orElseThrow().getEstado()).isEqualTo(PagoEstado.PENDIENTE);
+
+        // 8. Intento Administrador: Pasa HTTP @PreAuthorize y autorización de servicio -> 200 OK
+        HttpResponse<String> adminResolverResp = client.send(
+                HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/reembolsos/" + reembolsoId + "/resolver"))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("aprobar", true))))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
+        assertThat(adminResolverResp.statusCode()).isEqualTo(200);
+
+        JsonNode adminRespJson = objectMapper.readTree(adminResolverResp.body());
+        assertThat(adminRespJson.get("estado").asText()).isEqualTo("APROBADO");
+
+        // 9. Verificar persistencia y nota de crédito emitida
+        Pago reembolsoAprobado = pagoRepository.findById(reembolsoId).orElseThrow();
+        assertThat(reembolsoAprobado.getEstado()).isEqualTo(PagoEstado.REEMBOLSADO);
+
+        List<Factura> facturasReserva = facturaRepository.findByReservaId(reservaId);
+        boolean notaCreditoExiste = facturasReserva.stream()
+                .anyMatch(f -> f.getTipo() == FacturaTipo.NOTA_CREDITO);
+        assertThat(notaCreditoExiste).isTrue();
     }
 }

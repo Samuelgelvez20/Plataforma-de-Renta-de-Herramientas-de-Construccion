@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -72,6 +73,7 @@ public class ReembolsoController {
     }
 
     @PutMapping("/{id}/resolver")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'PROPIETARIO')")
     @Operation(summary = "Resolver reembolso", description = "Aprueba o rechaza una solicitud de reembolso pendiente")
     public ResponseEntity<ReembolsoResponse> resolver(@PathVariable UUID id, @RequestBody ResolverReembolsoRequest req, Authentication auth) {
         Usuario actor = authService.obtenerUsuarioPorEmail(auth.getName());

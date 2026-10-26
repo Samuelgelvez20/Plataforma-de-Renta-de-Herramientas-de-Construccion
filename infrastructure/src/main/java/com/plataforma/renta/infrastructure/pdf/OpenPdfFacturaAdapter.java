@@ -44,7 +44,14 @@ public class OpenPdfFacturaAdapter implements FacturaPdfPort {
             title.setSpacingAfter(4f);
             document.add(title);
 
-            String tipoDoc = factura.getTipo() == FacturaTipo.NOTA_CREDITO ? "NOTA CRÉDITO" : "FACTURA ELECTRÓNICA DE VENTA";
+            String tipoDoc;
+            if (factura.getTipo() == FacturaTipo.NOTA_CREDITO) {
+                tipoDoc = "NOTA CRÉDITO";
+            } else if (factura.getTipo() == FacturaTipo.REPARACION) {
+                tipoDoc = "FACTURA DE COBRO POR REPARACIÓN";
+            } else {
+                tipoDoc = "FACTURA ELECTRÓNICA DE VENTA";
+            }
             Paragraph docType = new Paragraph(tipoDoc + " N° " + factura.getNumeroFactura(), subtitleFont);
             docType.setAlignment(Element.ALIGN_CENTER);
             docType.setSpacingAfter(15f);
@@ -55,7 +62,7 @@ public class OpenPdfFacturaAdapter implements FacturaPdfPort {
             metaTable.setWidthPercentage(100);
             metaTable.setSpacingAfter(15f);
 
-            PdfPCell cellEmision = new PdfPCell(new Phrase("Fecha de Emisión: " + FORMATTER.format(factura.getFechaEmision()), normalFont));
+            PdfPCell cellEmision = new PdfPCell(new Phrase("Fecha de Emisión: " + FORMATTER.format(factura.getFechaEmision()) + " | Estado: " + (factura.getEstado() != null ? factura.getEstado() : "PAGADA"), normalFont));
             cellEmision.setBorder(Rectangle.NO_BORDER);
             metaTable.addCell(cellEmision);
 
@@ -108,9 +115,17 @@ public class OpenPdfFacturaAdapter implements FacturaPdfPort {
                 itemsTable.addCell(c);
             }
 
-            String concepto = factura.getTipo() == FacturaTipo.NOTA_CREDITO ?
-                    "Reembolso / Cancelación de renta de equipo de construcción" :
-                    "Servicio de renta de herramienta y equipo de construcción";
+            String concepto;
+            if (factura.getTipo() == FacturaTipo.NOTA_CREDITO) {
+                concepto = "Reembolso / Cancelación de renta de equipo de construcción";
+            } else if (factura.getTipo() == FacturaTipo.REPARACION) {
+                concepto = "Cobro por costos de reparación de daños: " +
+                        (factura.getDescripcionDano() != null && !factura.getDescripcionDano().isBlank()
+                                ? factura.getDescripcionDano()
+                                : "Daño reportado en devolución de equipo");
+            } else {
+                concepto = "Servicio de renta de herramienta y equipo de construcción";
+            }
 
             PdfPCell cConcepto = new PdfPCell(new Phrase(concepto, normalFont));
             cConcepto.setPadding(8f);

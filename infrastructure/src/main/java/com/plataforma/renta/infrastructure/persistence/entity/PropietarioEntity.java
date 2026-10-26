@@ -13,7 +13,7 @@ public class PropietarioEntity implements Persistable<UUID> {
     @Column(name = "usuario_id", nullable = false)
     private UUID usuarioId;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.EAGER)
     @MapsId
     @JoinColumn(name = "usuario_id")
     private UsuarioEntity usuario;
@@ -23,9 +23,6 @@ public class PropietarioEntity implements Persistable<UUID> {
 
     @Column(name = "razon_social", nullable = false, length = 200)
     private String razonSocial;
-
-    @Column(name = "nit", nullable = false, unique = true, length = 20)
-    private String nit;
 
     @Column(name = "direccion_fiscal", nullable = false, columnDefinition = "TEXT")
     private String direccionFiscal;
@@ -47,7 +44,7 @@ public class PropietarioEntity implements Persistable<UUID> {
 
     protected PropietarioEntity() {}
 
-    public PropietarioEntity(UsuarioEntity usuario, String razonSocial, String nit,
+    public PropietarioEntity(UsuarioEntity usuario, String razonSocial,
                              String direccionFiscal, String telefonoContacto,
                              String regimen, String municipio, String departamento) {
         this.usuario = usuario;
@@ -55,7 +52,6 @@ public class PropietarioEntity implements Persistable<UUID> {
             this.usuarioId = usuario.getId();
         }
         this.razonSocial = razonSocial;
-        this.nit = nit;
         this.direccionFiscal = direccionFiscal;
         this.telefonoContacto = telefonoContacto;
         this.regimen = regimen;
@@ -82,7 +78,6 @@ public class PropietarioEntity implements Persistable<UUID> {
     public UUID getUsuarioId() { return usuarioId; }
     public UsuarioEntity getUsuario() { return usuario; }
     public String getRazonSocial() { return razonSocial; }
-    public String getNit() { return nit; }
     public String getDireccionFiscal() { return direccionFiscal; }
     public String getTelefonoContacto() { return telefonoContacto; }
     public String getRegimen() { return regimen; }
@@ -96,7 +91,6 @@ public class PropietarioEntity implements Persistable<UUID> {
         }
     }
     public void setRazonSocial(String razonSocial) { this.razonSocial = razonSocial; }
-    public void setNit(String nit) { this.nit = nit; }
     public void setDireccionFiscal(String direccionFiscal) { this.direccionFiscal = direccionFiscal; }
     public void setTelefonoContacto(String telefonoContacto) { this.telefonoContacto = telefonoContacto; }
     public void setRegimen(String regimen) { this.regimen = regimen; }

@@ -92,11 +92,9 @@ class PersistenciaSprint1IntegrationTest {
         usuario = usuarioRepository.saveAndFlush(usuario);
         assertThat(usuario.getId()).isNotNull();
 
-        String nitUnico = "900" + (100000 + (int)(Math.random() * 800000)) + "-1";
         PropietarioEntity propietario = new PropietarioEntity(
                 usuario,
                 "Construcciones Andinas SAS",
-                nitUnico,
                 "Av Eldorado # 68-45",
                 "3115551234",
                 "COMUN",
@@ -112,7 +110,6 @@ class PersistenciaSprint1IntegrationTest {
         Optional<PropietarioEntity> recuperado = propietarioRepository.findById(usuario.getId());
         assertThat(recuperado).isPresent();
         assertThat(recuperado.get().getRazonSocial()).isEqualTo("Construcciones Andinas SAS");
-        assertThat(recuperado.get().getNit()).isEqualTo(nitUnico);
         assertThat(recuperado.get().getUsuario().getRol()).isEqualTo(UserRol.PROPIETARIO);
 
         // Actualizar verificación
@@ -174,9 +171,8 @@ class PersistenciaSprint1IntegrationTest {
         );
         usuario = usuarioRepository.saveAndFlush(usuario);
 
-        String nitUnico = "800" + (100000 + (int)(Math.random() * 800000)) + "-3";
         PropietarioEntity propietario = new PropietarioEntity(
-                usuario, "Alquileres Giraldo", nitUnico,
+                usuario, "Alquileres Giraldo",
                 "Calle 12 # 34-56", "3158889999", "SIMPLIFICADO", "Cali", "Valle del Cauca"
         );
         propietario = propietarioRepository.saveAndFlush(propietario);

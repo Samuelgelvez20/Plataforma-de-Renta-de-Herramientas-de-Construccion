@@ -591,10 +591,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   <FileCheck2 className="w-5 h-5" />
                 </div>
                 <h4 className="text-sm font-bold text-[#F4F5F6] mb-1.5">
-                  Validación DIAN de NIT
+                  Verificación Empresarial
                 </h4>
                 <p className="text-xs text-neutral-400 leading-relaxed">
-                  Registro empresarial estricto con comprobación de dígito de verificación para proveedores certificados.
+                  Registro de contratistas y proveedores certificados con verificación de razón social y dirección fiscal.
                 </p>
               </div>
             </div>

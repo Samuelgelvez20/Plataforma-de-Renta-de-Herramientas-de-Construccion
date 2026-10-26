@@ -22,7 +22,7 @@ public interface AuthService {
 
     Usuario toggleActivo(UUID id, UUID actorId);
 
-    Usuario actualizarUsuario(UUID id, String nombre, String apellido, String telefono, String direccion, String razonSocial, String nit);
+    Usuario actualizarUsuario(UUID id, String nombre, String apellido, String telefono, String direccion, String razonSocial);
 
     void eliminarUsuario(UUID id, UUID actorId);
 
@@ -40,7 +40,6 @@ public interface AuthService {
             UserRol rol,
             String telefono,
             String razonSocial,
-            String nit,
             String direccionFiscal,
             String direccionEntregaDefault
     ) {}

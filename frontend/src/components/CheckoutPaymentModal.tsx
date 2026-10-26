@@ -40,13 +40,15 @@ const LISTA_BANCOS_COLOMBIA = [
 ];
 
 interface CheckoutPaymentModalProps {
-  reservation: Reservation | null;
+  reservation?: Reservation | null;
+  invoice?: Invoice | null;
   onClose: () => void;
   onPaymentSuccess: (invoice: Invoice) => void;
 }
 
 export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
   reservation,
+  invoice,
   onClose,
   onPaymentSuccess
 }) => {
@@ -59,29 +61,37 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [completedInvoice, setCompletedInvoice] = useState<Invoice | null>(null);
 
-  if (!reservation) return null;
+  if (!reservation && !invoice) return null;
+
+  const isRepairPayment = Boolean(invoice);
+  const targetReservaId = invoice ? invoice.reservaId : reservation?.id;
+  const targetFacturaId = invoice?.id;
+  const targetTotal = invoice ? invoice.total : (reservation?.total ?? 0);
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
     setErrorMsg('');
 
-    const idempotencyKey = `IDEMP-${reservation.id}-${Date.now()}`;
+    const refId = targetFacturaId || targetReservaId;
+    const idempotencyKey = `IDEMP-${refId}-${Date.now()}`;
 
     try {
       const res = await api.processPayment({
-        reservaId: reservation.id,
+        reservaId: targetReservaId,
+        facturaId: targetFacturaId,
         metodo,
         claveIdempotencia: idempotencyKey
       });
 
-      setCompletedInvoice(res.factura);
+      const resultingInvoice = res.factura || invoice;
+      setCompletedInvoice(resultingInvoice);
       confetti({
         particleCount: 80,
         spread: 60,
         origin: { y: 0.6 }
       });
-      onPaymentSuccess(res.factura);
+      onPaymentSuccess(resultingInvoice);
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al procesar el pago');
     } finally {
@@ -109,7 +119,7 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
               Pasarela de Pagos Segura
             </span>
             <h2 className="text-base font-bold text-neutral-900 leading-tight">
-              {completedInvoice ? 'Pago Exitoso y Factura Emitida' : 'Confirmar y Pagar Alquiler'}
+              {completedInvoice ? 'Pago Exitoso y Factura Emitida' : (isRepairPayment ? 'Pago de Costos de Reparación' : 'Confirmar y Pagar Alquiler')}
             </h2>
           </div>
           <button
@@ -140,11 +150,11 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
                 <span className="font-bold text-neutral-900">{completedInvoice.numeroFactura}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">Cliente:</span>
-                <span className="text-neutral-900 truncate max-w-[200px]">{completedInvoice.clienteNombre}</span>
+                <span className="text-neutral-500">Concepto:</span>
+                <span className="text-neutral-900 truncate max-w-[200px]">{completedInvoice.concepto || completedInvoice.herramientaNombre || 'Servicio'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">Monto Total (IVA 19% inc.):</span>
+                <span className="text-neutral-500">Monto Total:</span>
                 <span className="font-bold text-emerald-700 tabular-nums">
                   ${completedInvoice.total.toLocaleString('es-CO')} COP
                 </span>
@@ -177,29 +187,56 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
               </div>
             )}
 
-            {/* Reservation Summary */}
-            <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200 mb-5 text-xs">
-              <div className="flex justify-between mb-1.5">
-                <span className="text-neutral-500">Equipo:</span>
-                <span className="font-semibold text-neutral-900">{reservation.herramientaNombre}</span>
+            {/* Reservation / Invoice Summary */}
+            {isRepairPayment && invoice ? (
+              <div className="bg-amber-50/60 rounded-xl p-4 border border-amber-200 mb-5 text-xs">
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-neutral-500">Concepto:</span>
+                  <span className="font-semibold text-neutral-900">{invoice.concepto || `Costos de reparación de ${invoice.herramientaNombre || 'equipo'}`}</span>
+                </div>
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-neutral-500">Herramienta:</span>
+                  <span className="font-medium text-neutral-800">{invoice.herramientaNombre || 'Equipo'}</span>
+                </div>
+                {invoice.descripcionDano && (
+                  <div className="flex justify-between mb-1.5 bg-amber-100/60 p-2 rounded text-neutral-800">
+                    <span className="text-neutral-600 font-medium">Daño reportado:</span>
+                    <span className="font-semibold text-right max-w-[240px]">{invoice.descripcionDano}</span>
+                  </div>
+                )}
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-neutral-500">Referencia Reserva:</span>
+                  <span className="font-mono text-neutral-800">#{invoice.reservaId}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-amber-200 font-bold text-sm">
+                  <span className="text-neutral-900">Total a Pagar (COP):</span>
+                  <span className="text-amber-700 font-mono tabular-nums">${targetTotal.toLocaleString('es-CO')} COP</span>
+                </div>
               </div>
-              <div className="flex justify-between mb-1.5">
-                <span className="text-neutral-500">Periodo reservado:</span>
-                <span className="font-mono text-neutral-800">{reservation.fechaInicio} a {reservation.fechaFin} ({reservation.dias} días)</span>
+            ) : reservation ? (
+              <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200 mb-5 text-xs">
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-neutral-500">Equipo:</span>
+                  <span className="font-semibold text-neutral-900">{reservation.herramientaNombre}</span>
+                </div>
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-neutral-500">Periodo reservado:</span>
+                  <span className="font-mono text-neutral-800">{reservation.fechaInicio} a {reservation.fechaFin} ({reservation.dias} días)</span>
+                </div>
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-neutral-500">Subtotal:</span>
+                  <span className="font-mono tabular-nums text-neutral-900">${reservation.subtotal.toLocaleString('es-CO')} COP</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-neutral-500">IVA (19%):</span>
+                  <span className="font-mono tabular-nums text-neutral-900">${reservation.iva.toLocaleString('es-CO')} COP</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-neutral-200 font-bold text-sm">
+                  <span className="text-neutral-900">Total a Pagar:</span>
+                  <span className="text-amber-600 font-mono tabular-nums">${targetTotal.toLocaleString('es-CO')} COP</span>
+                </div>
               </div>
-              <div className="flex justify-between mb-1.5">
-                <span className="text-neutral-500">Subtotal:</span>
-                <span className="font-mono tabular-nums text-neutral-900">${reservation.subtotal.toLocaleString('es-CO')} COP</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-neutral-500">IVA (19%):</span>
-                <span className="font-mono tabular-nums text-neutral-900">${reservation.iva.toLocaleString('es-CO')} COP</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-neutral-200 font-bold text-sm">
-                <span className="text-neutral-900">Total a Pagar:</span>
-                <span className="text-amber-600 font-mono tabular-nums">${reservation.total.toLocaleString('es-CO')} COP</span>
-              </div>
-            </div>
+            ) : null}
 
             {/* Payment Method Selector */}
             <div className="mb-4">
@@ -327,7 +364,7 @@ export const CheckoutPaymentModal: React.FC<CheckoutPaymentModalProps> = ({
                 disabled={processing}
                 className="px-6 py-2.5 text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-600 rounded-lg transition-colors shadow-xs"
               >
-                {processing ? 'Procesando Transacción...' : `Pagar $${reservation.total.toLocaleString('es-CO')} COP`}
+                {processing ? 'Procesando Transacción...' : `Pagar $${targetTotal.toLocaleString('es-CO')} COP`}
               </button>
             </div>
           </form>

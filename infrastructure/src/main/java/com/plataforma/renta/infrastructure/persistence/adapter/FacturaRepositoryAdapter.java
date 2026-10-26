@@ -1,6 +1,7 @@
 package com.plataforma.renta.infrastructure.persistence.adapter;
 
 import com.plataforma.renta.domain.model.Factura;
+import com.plataforma.renta.domain.model.FacturaTipo;
 import com.plataforma.renta.domain.port.out.FacturaRepository;
 import com.plataforma.renta.infrastructure.persistence.entity.FacturaEntity;
 import com.plataforma.renta.infrastructure.persistence.mapper.FacturaMapper;
@@ -44,6 +45,9 @@ public class FacturaRepositoryAdapter implements FacturaRepository {
         if (factura.getPagoReembolsoId() != null) {
             entity.setPagoReembolso(pagoRepo.getReferenceById(factura.getPagoReembolsoId()));
         }
+        if (factura.getPagoId() != null) {
+            entity.setPago(pagoRepo.getReferenceById(factura.getPagoId()));
+        }
         return mapper.toDomain(springRepo.save(entity));
     }
 
@@ -79,6 +83,16 @@ public class FacturaRepositoryAdapter implements FacturaRepository {
     @Override
     public boolean existsByNumeroFactura(String numeroFactura) {
         return springRepo.existsByNumeroFactura(numeroFactura);
+    }
+
+    @Override
+    public Optional<Factura> findReparacionByReservaId(UUID reservaId) {
+        return springRepo.findReparacionByReservaId(reservaId).map(mapper::toDomain);
+    }
+
+    @Override
+    public boolean existsByReservaIdAndTipo(UUID reservaId, FacturaTipo tipo) {
+        return springRepo.existsByReservaIdAndTipo(reservaId, com.plataforma.renta.infrastructure.persistence.entity.FacturaTipo.valueOf(tipo.name()));
     }
 
     @Override

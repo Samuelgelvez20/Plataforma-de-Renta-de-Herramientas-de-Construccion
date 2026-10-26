@@ -10,6 +10,7 @@ public final class Pago {
     private final UUID id;
     private final UUID reservaId;
     private final UUID pagoOriginalId;
+    private final UUID facturaId;
     private PagoEstado estado;
     private final String proveedorPago;
     private String transaccionId;
@@ -22,9 +23,16 @@ public final class Pago {
     public Pago(UUID id, UUID reservaId, UUID pagoOriginalId,
                 PagoEstado estado, String proveedorPago, String transaccionId,
                 Dinero monto, String motivo, Instant fechaPago, Instant creadoEn) {
+        this(id, reservaId, pagoOriginalId, null, estado, proveedorPago, transaccionId, monto, motivo, fechaPago, creadoEn);
+    }
+
+    public Pago(UUID id, UUID reservaId, UUID pagoOriginalId, UUID facturaId,
+                PagoEstado estado, String proveedorPago, String transaccionId,
+                Dinero monto, String motivo, Instant fechaPago, Instant creadoEn) {
         this.id = id;
         this.reservaId = reservaId;
         this.pagoOriginalId = pagoOriginalId;
+        this.facturaId = facturaId;
         this.estado = estado;
         this.proveedorPago = proveedorPago;
         this.transaccionId = transaccionId;
@@ -36,17 +44,22 @@ public final class Pago {
     }
 
     public static Pago pendiente(UUID reservaId, Dinero monto, String proveedorPago) {
-        return new Pago(UUID.randomUUID(), reservaId, null,
+        return new Pago(UUID.randomUUID(), reservaId, null, null,
                 PagoEstado.PENDIENTE, proveedorPago, null, monto, null, null, Instant.now());
     }
 
     public static Pago completado(UUID reservaId, Dinero monto, String proveedorPago, String transaccionId) {
-        return new Pago(UUID.randomUUID(), reservaId, null,
+        return new Pago(UUID.randomUUID(), reservaId, null, null,
                 PagoEstado.COMPLETADO, proveedorPago, transaccionId, monto, "Pago confirmado", Instant.now(), Instant.now());
     }
 
+    public static Pago reparacion(UUID reservaId, UUID facturaId, Dinero monto, String proveedorPago, String transaccionId) {
+        return new Pago(UUID.randomUUID(), reservaId, null, facturaId,
+                PagoEstado.COMPLETADO, proveedorPago, transaccionId, monto, "Pago de reparación confirmado", Instant.now(), Instant.now());
+    }
+
     public static Pago reembolso(UUID reservaId, UUID pagoOriginalId, Dinero monto, String motivo) {
-        return new Pago(UUID.randomUUID(), reservaId, pagoOriginalId,
+        return new Pago(UUID.randomUUID(), reservaId, pagoOriginalId, null,
                 PagoEstado.REEMBOLSADO, "SIMULADO", null, monto, motivo, Instant.now(), Instant.now());
     }
 
@@ -86,6 +99,7 @@ public final class Pago {
     public UUID getId() { return id; }
     public UUID getReservaId() { return reservaId; }
     public UUID getPagoOriginalId() { return pagoOriginalId; }
+    public UUID getFacturaId() { return facturaId; }
     public PagoEstado getEstado() { return estado; }
     public String getProveedorPago() { return proveedorPago; }
     public String getTransaccionId() { return transaccionId; }

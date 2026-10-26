@@ -49,9 +49,17 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.setCharacterEncoding("UTF-8");
+                            response.getWriter().write("{\"codigo\":\"NO_AUTENTICADO\",\"mensaje\":\"Credenciales no provistas o inválidas\"}");
+                        })
+                )
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/v1/auth/**").permitAll();
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register").permitAll();
 
                     if (isProdProfile) {
                         // SEC-03 (Defensa en profundidad): En producción, denegar explícitamente acceso público a Swagger y OpenAPI

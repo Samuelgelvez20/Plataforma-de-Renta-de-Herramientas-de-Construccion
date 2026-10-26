@@ -24,6 +24,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @io.swagger.v3.oas.annotations.security.SecurityRequirements()
     @Operation(summary = "Iniciar sesión", description = "Autentica al usuario y genera un JWT válido")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
         var res = authService.login(req.email(), req.password());
@@ -32,6 +33,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @io.swagger.v3.oas.annotations.security.SecurityRequirements()
     @Operation(summary = "Registrar usuario", description = "Crea una nueva cuenta con perfil asociado y genera un JWT")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest req) {
         UserRol rol;
@@ -51,7 +53,7 @@ public class AuthController {
         }
         var cmd = new RegisterUserCommand(
                 req.email(), req.password(), req.nombre(), req.apellido(), rol,
-                req.telefono(), req.razonSocial(), req.nit(), req.direccionFiscal(),
+                req.telefono(), req.razonSocial(), req.direccionFiscal(),
                 req.direccionEntregaDefault()
         );
         var res = authService.register(cmd);
@@ -62,6 +64,9 @@ public class AuthController {
     @GetMapping("/me")
     @Operation(summary = "Obtener usuario actual", description = "Retorna los datos del usuario autenticado")
     public ResponseEntity<UserResponse> me(Authentication auth) {
+        if (auth == null || auth.getName() == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
         Usuario usuario = authService.obtenerUsuarioPorEmail(auth.getName());
         return ResponseEntity.ok(toUserResponse(usuario));
     }

@@ -52,7 +52,7 @@ graph TD
 
     subgraph Modulo dominio
         Entities[Entidades y Agregados: Reserva, Pago, Factura, Herramienta]
-        ValueObjects[Value Objects: Dinero, Email, Nit, Rangos]
+        ValueObjects[Value Objects: Dinero, Email, Rangos]
         PortsIn[Puertos de Entrada]
         PortsOut[Puertos de Salida - Repositorios / PDF]
     end
@@ -84,7 +84,7 @@ graph TD
 
 | Módulo | Tipo | Responsabilidad Arquitectónica | Dependencias Permitidas |
 | :--- | :--- | :--- | :--- |
-| **`domain`** | Java Puro | Núcleo del negocio: Entidades (`Reserva`, `Pago`, `Factura`, `Herramienta`), Enums (`ReservaEstado`, `PagoEstado`), Value Objects (`Dinero`, `Nit`, `Email`) y Puertos (`*Repository`, `FacturaPdfPort`). | Ninguna dependencia externa de frameworks. |
+| **`domain`** | Java Puro | Núcleo del negocio: Entidades (`Reserva`, `Pago`, `Factura`, `Herramienta`), Enums (`ReservaEstado`, `PagoEstado`), Value Objects (`Dinero`, `Email`) y Puertos (`*Repository`, `FacturaPdfPort`). | Ninguna dependencia externa de frameworks. |
 | **`application`** | Java / Spring Core | Casos de uso y orquestación del dominio (`ReservaService`, `PagoService`, `FacturaService`, etc.). | Depende únicamente de `domain`. |
 | **`infrastructure`** | Spring Data JPA / OpenPDF | Adaptadores que implementan los puertos de salida: mapeo relacional a PostgreSQL, consultas SQL optimizadas y renderizado de facturas PDF. | Depende de `domain` y `application`. |
 | **`api`** | Spring Web | Controladores REST, DTOs de entrada/salida y validación `@Valid` según estándares OpenAPI 3. | Depende de `application` y `domain`. |
@@ -135,7 +135,6 @@ erDiagram
 
     PROPIETARIO {
         uuid usuario_id PK,FK
-        varchar nit UK
         varchar razon_social
         varchar direccion_fiscal
         varchar regimen_tributario
@@ -202,8 +201,8 @@ erDiagram
    Verifica que una factura de tipo `NOTA_CREDITO` referencie una `FACTURA` previa válida de la misma reserva y un pago en estado `REEMBOLSADO`.
 3. **Idempotencia de Pagos (`uq_pago_completado_por_reserva`):**
    Índice único condicional que garantiza a nivel de motor que jamás exista más de un cobro completado para una misma reserva.
-4. **Validación de NIT Colombiano:**
-   El Value Object `Nit` valida sintaxis y calcula el dígito de verificación mediante el algoritmo oficial de módulo 11 de la DIAN (`41, 37, 29, 23, 19, 17, 13, 7, 3`).
+4. **Segregación de Roles y Registro Seguro:**
+   Control estricto de roles en el registro y en tiempo de ejecución (`ROLE_CLIENTE`, `ROLE_PROPIETARIO`, `ROLE_ADMIN`). Los endpoints de administración y de creación de usuarios con privilegios elevados están restringidos exclusivamente al rol `ADMIN`.
 
 ---
 
@@ -277,18 +276,16 @@ El backend se configura mediante variables de entorno estándar. No se versionan
 - **Node.js:** Versión 20+ y `npm`.
 - **PostgreSQL / Docker:** Contenedor PostgreSQL 16 activo.
 
-### 1. Iniciar Base de Datos Aislada (Docker)
+### 1. Iniciar Base de Datos con Docker Compose
 ```bash
-# Iniciar contenedor existente
-docker start plataforma_renta_isolated_pg
+# Copiar variables de entorno base
+cp .env.example .env
 
-# O crearlo desde cero si no existe:
-docker run -d --name plataforma_renta_isolated_pg \
-  -e POSTGRES_DB=plataforma_renta \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5439:5432 \
-  postgres:16-alpine
+# Iniciar contenedor PostgreSQL 16 Alpine en segundo plano
+docker compose up -d
+
+# Verificar estado saludable (healthy)
+docker compose ps
 ```
 
 ### 2. Conexión desde Clientes SQL (DBeaver, DataGrip, pgAdmin)
@@ -353,16 +350,19 @@ La interfaz estará disponible en: **`http://localhost:5174`** (o `http://localh
 
 ---
 
-## 8. Cuentas de Demostración para Evaluación
+## 8. Cuentas de Demostración para Evaluación y Sustentación
 
-Para facilitar los ensayos y la verificación funcional sin necesidad de registrar datos manualmente, la base de datos local cuenta con:
+Para los ensayos, sustentación y pruebas del sistema, la base de datos se inicializa con el script reproducible [`database/seed_demo.sql`](database/seed_demo.sql) (`docker compose exec -i postgres psql -U postgres -d plataforma_renta < database/seed_demo.sql`):
 
-| Rol | Correo Electrónico | Contraseña | Datos y Funcionalidades |
+| Rol | Correo Electrónico | Contraseña Demostración | Perfil / Catálogo Asociado |
 | :--- | :--- | :--- | :--- |
-| **PROPIETARIO** | `contacto@maquinariavalle.com` | `Password123!` | Cuenta con herramientas publicadas, gestión de inventario, aprobación de reservas y recepción técnica de equipos. |
-| **CLIENTE** | `compras@colpatriaconstrucciones.com` | `Password123!` | Cuenta empresarial con historial de reservas, flujo de pago simulado y descarga de facturas en PDF. |
+| **ADMIN** | `admin@obrixen.com.co` | `AdminDemo2026*!` | Panel administrativo global, gestión de usuarios y métricas. |
+| **CLIENTE** | `cliente@obrixen.com.co` | `ClienteDemo2026*!` | Andrés Restrepo (Constructora Restrepo SAS) con dirección de entrega. |
+| **PROPIETARIO 1** | `propietario1@obrixen.com.co` | `Propietario1Demo2026*!` | Maquinaria y Equipos Andina S.A.S. (Bogotá) — 8 herramientas. |
+| **PROPIETARIO 2** | `propietario2@obrixen.com.co` | `Propietario2Demo2026*!` | Soluciones de Energía y Andamios del Valle S.A.S. (Cali) — 8 herramientas. |
+| **PROPIETARIO 3** | `propietario3@obrixen.com.co` | `Propietario3Demo2026*!` | Equipos Eléctricos y Menores de Antioquia Ltda. (Medellín) — 8 herramientas. |
 
-> **Registro de Nuevos Usuarios:** Puedes crear usuarios nuevos con rol `CLIENTE` o `PROPIETARIO` desde la pantalla de Registro o mediante la API. El rol `ADMIN` está protegido contra registro público por reglas de seguridad.
+> **Registro de Nuevos Usuarios:** Puedes crear usuarios nuevos con rol `CLIENTE` o `PROPIETARIO` desde la pantalla de Registro o mediante la API (sin requerir NIT). El rol `ADMIN` está protegido contra registro público por reglas de seguridad.
 
 ---
 
@@ -370,8 +370,8 @@ Para facilitar los ensayos y la verificación funcional sin necesidad de registr
 
 ### Swagger / OpenAPI 3.0
 Con el backend en ejecución, acceda a la documentación interactiva y especificación OpenAPI en:
-- **Swagger UI:** `http://localhost:8080/swagger-ui/index.html`
-- **OpenAPI JSON Spec:** `http://localhost:8080/v3/api-docs`
+- **Swagger UI:** `http://localhost:8080/swagger-ui/index.html` (Incluye botón **Authorize** para autenticación `Bearer <token>` y endpoints públicos debidamente desmarcados).
+- **OpenAPI JSON Spec:** `http://localhost:8080/v3/api-docs` (Esquema de seguridad `bearerAuth` HTTP Bearer JWT).
 
 ### Colección Postman
 En la carpeta [`docs/postman_collection.json`](docs/postman_collection.json) se encuentra la colección oficial compatible con Postman v2.1. Incluye scripts automáticos para guardar tokens JWT en variables de colección y cubre:
@@ -393,7 +393,7 @@ El proyecto cuenta con un conjunto integral de pruebas automatizadas:
 mvn test
 ```
 
-- **Pruebas Unitarias de Dominio:** Validaciones de NIT, operaciones financieras con `Dinero` y transiciones de estados de `Reserva`.
+- **Pruebas Unitarias de Dominio:** Modelado de entidades ricas, operaciones financieras con `Dinero` y transiciones seguras de estados de `Reserva`.
 - **Pruebas de Casos de Uso (Mockito):** Verificación de idempotencia, orquestación de pagos, facturas y notas de crédito.
 - **Pruebas de Integración con Testcontainers:** Verificación de concurrencia y transacciones sobre PostgreSQL real en contenedor Docker.
 - **Pruebas de Arquitectura (ArchUnit):** Reglas hexagonales que prohíben que el dominio importe infraestructura o frameworks.

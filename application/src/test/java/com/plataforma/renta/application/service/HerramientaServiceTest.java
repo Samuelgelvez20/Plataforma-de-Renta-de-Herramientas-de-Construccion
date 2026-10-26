@@ -14,7 +14,6 @@ import com.plataforma.renta.domain.exception.EntidadNoEncontradaException;
 import java.time.LocalDate;
 import com.plataforma.renta.domain.value.Dinero;
 import com.plataforma.renta.domain.value.Email;
-import com.plataforma.renta.domain.value.Nit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,7 +62,7 @@ class HerramientaServiceTest {
         UUID categoriaId = UUID.randomUUID();
 
         Propietario propietario = new Propietario(
-                propietarioId, Email.of("prop@test.com"), Nit.of("900123450-4"),
+                propietarioId, Email.of("prop@test.com"),
                 "Razón Social", "Calle 1", "3001234567", "COMUN", "Bogota", "Cundinamarca", Instant.now()
         );
         Categoria categoria = new Categoria(categoriaId, "Herramientas Eléctricas", "Desc", Instant.now());

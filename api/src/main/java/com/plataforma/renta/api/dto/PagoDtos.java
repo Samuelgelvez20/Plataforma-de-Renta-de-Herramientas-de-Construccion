@@ -8,10 +8,15 @@ import java.util.UUID;
 public class PagoDtos {
 
     public record ProcesarPagoRequest(
-            @NotNull UUID reservaId,
+            UUID reservaId,
+            UUID facturaId,
             String metodo,
             String claveIdempotencia
-    ) {}
+    ) {
+        public ProcesarPagoRequest(UUID reservaId, String metodo, String claveIdempotencia) {
+            this(reservaId, null, metodo, claveIdempotencia);
+        }
+    }
 
     public record PagoResponse(
             UUID id,

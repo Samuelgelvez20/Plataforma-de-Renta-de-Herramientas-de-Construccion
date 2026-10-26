@@ -558,7 +558,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ onNavigateCatalo
           </button>
 
           <button
-            onClick={() => setActiveTab('reservas')}
+            onClick={() => { setActiveTab('reservas'); loadData(); }}
             className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
               activeTab === 'reservas'
                 ? 'border-[#F5A623] text-[#17191C]'
@@ -574,7 +574,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ onNavigateCatalo
           </button>
 
           <button
-            onClick={() => setActiveTab('operaciones')}
+            onClick={() => { setActiveTab('operaciones'); loadData(); }}
             className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
               activeTab === 'operaciones'
                 ? 'border-[#F5A623] text-[#17191C]'
@@ -590,7 +590,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ onNavigateCatalo
           </button>
 
           <button
-            onClick={() => setActiveTab('reembolsos')}
+            onClick={() => { setActiveTab('reembolsos'); loadData(); }}
             className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
               activeTab === 'reembolsos'
                 ? 'border-[#F5A623] text-[#17191C]'
@@ -1516,7 +1516,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ onNavigateCatalo
                       <input
                         type="number"
                         min="0"
-                        step="10000"
+                        step="1000"
                         value={repairCost}
                         onChange={(e) => setRepairCost(parseFloat(e.target.value) || 0)}
                         className="w-full p-2 bg-white border border-neutral-300 rounded-lg font-mono text-neutral-900"

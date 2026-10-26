@@ -42,6 +42,10 @@ public class PagoEntity {
     @Column(name = "motivo", columnDefinition = "TEXT")
     private String motivo;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "factura_id")
+    private FacturaEntity factura;
+
     @Column(name = "fecha_pago")
     private Instant fechaPago;
 
@@ -54,9 +58,17 @@ public class PagoEntity {
                       PagoEstado estado, String proveedorPago, String transaccionId,
                       BigDecimal monto, String moneda, String motivo,
                       Instant fechaPago, Instant creadoEn) {
+        this(id, reserva, pagoOriginal, null, estado, proveedorPago, transaccionId, monto, moneda, motivo, fechaPago, creadoEn);
+    }
+
+    public PagoEntity(UUID id, ReservaEntity reserva, PagoEntity pagoOriginal, FacturaEntity factura,
+                      PagoEstado estado, String proveedorPago, String transaccionId,
+                      BigDecimal monto, String moneda, String motivo,
+                      Instant fechaPago, Instant creadoEn) {
         this.id = id;
         this.reserva = reserva;
         this.pagoOriginal = pagoOriginal;
+        this.factura = factura;
         this.estado = estado;
         this.proveedorPago = proveedorPago;
         this.transaccionId = transaccionId;
@@ -79,6 +91,7 @@ public class PagoEntity {
     public UUID getId() { return id; }
     public ReservaEntity getReserva() { return reserva; }
     public PagoEntity getPagoOriginal() { return pagoOriginal; }
+    public FacturaEntity getFactura() { return factura; }
     public PagoEstado getEstado() { return estado; }
     public String getProveedorPago() { return proveedorPago; }
     public String getTransaccionId() { return transaccionId; }
@@ -90,6 +103,7 @@ public class PagoEntity {
 
     public void setReserva(ReservaEntity reserva) { this.reserva = reserva; }
     public void setPagoOriginal(PagoEntity pagoOriginal) { this.pagoOriginal = pagoOriginal; }
+    public void setFactura(FacturaEntity factura) { this.factura = factura; }
     public void setEstado(PagoEstado estado) { this.estado = estado; }
     public void setProveedorPago(String proveedorPago) { this.proveedorPago = proveedorPago; }
     public void setTransaccionId(String transaccionId) { this.transaccionId = transaccionId; }

@@ -12,7 +12,5 @@ public interface PropietarioRepository {
 
     Optional<Propietario> findById(UUID id);
 
-    Optional<Propietario> findByNit(String nit);
-
     List<UUID> findHerramientaIdsByPropietarioId(UUID propietarioId);
 }

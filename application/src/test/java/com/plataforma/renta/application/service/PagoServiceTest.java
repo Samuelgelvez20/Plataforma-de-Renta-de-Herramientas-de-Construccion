@@ -605,4 +605,75 @@ class PagoServiceTest {
                 .isInstanceOf(com.plataforma.renta.domain.exception.MontoReembolsoInvalidoException.class)
                 .hasMessageContaining("Monto inválido. Disponible");
     }
+
+    @Test
+    @DisplayName("confirmarPagoReparacion exitoso actualiza factura a PAGADA y guarda pago de reparacion")
+    void confirmarPagoReparacionExitoso() {
+        UUID reservaId = UUID.randomUUID();
+        UUID clienteId = UUID.randomUUID();
+        Dinero total = Dinero.cop(BigDecimal.valueOf(119000));
+
+        Factura factura = Factura.reparacion(reservaId, "REP-001", Dinero.cop(BigDecimal.valueOf(100000)), Dinero.cop(BigDecimal.valueOf(19000)), total, BigDecimal.valueOf(19), false, "Fallo motor", "{}", "{}");
+        UUID facturaId = factura.getId();
+        Reserva reserva = new Reserva(reservaId, clienteId, ReservaEstado.FINALIZADA, LocalDate.now(), LocalDate.now().plusDays(1), Instant.now(), null);
+
+        when(facturaRepository.findById(facturaId)).thenReturn(Optional.of(factura));
+        when(pagoRepository.existsByFacturaIdAndEstado(facturaId, PagoEstado.COMPLETADO)).thenReturn(false);
+        when(reservaRepository.findByIdForUpdate(reservaId)).thenReturn(Optional.of(reserva));
+        when(pagoRepository.save(any(Pago.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(facturaRepository.save(any(Factura.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Pago pago = pagoService.confirmarPagoReparacion(facturaId, "SIMULADO", "TX-REP-1", clienteId, UserRol.CLIENTE);
+
+        assertThat(pago).isNotNull();
+        assertThat(pago.getEstado()).isEqualTo(PagoEstado.COMPLETADO);
+        assertThat(pago.getFacturaId()).isEqualTo(facturaId);
+        assertThat(pago.getMonto().getMonto()).isEqualByComparingTo(BigDecimal.valueOf(119000));
+
+        verify(facturaRepository).save(argThat(f -> "PAGADA".equals(f.getEstado()) && f.getPagoId() != null));
+    }
+
+    @Test
+    @DisplayName("confirmarPagoReparacion rechaza intento de pago por cliente ajeno (IDOR)")
+    void confirmarPagoReparacionRechazaClienteAjeno() {
+        UUID reservaId = UUID.randomUUID();
+        UUID clienteTitularId = UUID.randomUUID();
+        UUID clienteAtacanteId = UUID.randomUUID();
+        Dinero total = Dinero.cop(BigDecimal.valueOf(119000));
+
+        Factura factura = Factura.reparacion(reservaId, "REP-001", Dinero.cop(BigDecimal.valueOf(100000)), Dinero.cop(BigDecimal.valueOf(19000)), total, BigDecimal.valueOf(19), false, "Fallo motor", "{}", "{}");
+        UUID facturaId = factura.getId();
+        Reserva reserva = new Reserva(reservaId, clienteTitularId, ReservaEstado.FINALIZADA, LocalDate.now(), LocalDate.now().plusDays(1), Instant.now(), null);
+
+        when(facturaRepository.findById(facturaId)).thenReturn(Optional.of(factura));
+        when(reservaRepository.findByIdForUpdate(reservaId)).thenReturn(Optional.of(reserva));
+
+        assertThatThrownBy(() -> pagoService.confirmarPagoReparacion(facturaId, "SIMULADO", "TX-REP-1", clienteAtacanteId, UserRol.CLIENTE))
+                .isInstanceOf(OperacionInvalidaException.class)
+                .hasMessageContaining("No autorizado");
+
+        verify(pagoRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("confirmarPagoReparacion rechaza si la factura ya se encuentra pagada")
+    void confirmarPagoReparacionRechazaSiYaPagada() {
+        UUID reservaId = UUID.randomUUID();
+        UUID clienteId = UUID.randomUUID();
+        Dinero total = Dinero.cop(BigDecimal.valueOf(119000));
+
+        Factura factura = Factura.reparacion(reservaId, "REP-001", Dinero.cop(BigDecimal.valueOf(100000)), Dinero.cop(BigDecimal.valueOf(19000)), total, BigDecimal.valueOf(19), false, "Fallo motor", "{}", "{}");
+        Factura facturaPagada = factura.conEstadoPagada(UUID.randomUUID());
+        UUID facturaId = facturaPagada.getId();
+        Reserva reserva = new Reserva(reservaId, clienteId, ReservaEstado.FINALIZADA, LocalDate.now(), LocalDate.now().plusDays(1), Instant.now(), null);
+
+        when(facturaRepository.findById(facturaId)).thenReturn(Optional.of(facturaPagada));
+        when(reservaRepository.findByIdForUpdate(reservaId)).thenReturn(Optional.of(reserva));
+
+        assertThatThrownBy(() -> pagoService.confirmarPagoReparacion(facturaId, "SIMULADO", "TX-REP-1", clienteId, UserRol.CLIENTE))
+                .isInstanceOf(com.plataforma.renta.domain.exception.PagoYaConfirmadoException.class)
+                .hasMessageContaining("ya se encuentra pagada");
+
+        verify(pagoRepository, never()).save(any());
+    }
 }

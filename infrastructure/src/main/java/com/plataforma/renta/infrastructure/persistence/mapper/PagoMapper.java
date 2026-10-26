@@ -15,6 +15,7 @@ public class PagoMapper {
                 entity.getId(),
                 entity.getReserva() != null ? entity.getReserva().getId() : null,
                 entity.getPagoOriginal() != null ? entity.getPagoOriginal().getId() : null,
+                entity.getFactura() != null ? entity.getFactura().getId() : null,
                 toDomainEstado(entity.getEstado()),
                 entity.getProveedorPago(),
                 entity.getTransaccionId(),

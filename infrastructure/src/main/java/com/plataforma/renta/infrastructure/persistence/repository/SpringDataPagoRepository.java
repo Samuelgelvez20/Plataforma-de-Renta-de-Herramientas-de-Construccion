@@ -19,14 +19,14 @@ public interface SpringDataPagoRepository extends JpaRepository<PagoEntity, UUID
 
     List<PagoEntity> findByReservaId(UUID reservaId);
 
-    @Query("SELECT p FROM PagoEntity p WHERE p.reserva.id = :reservaId AND p.estado = :estado")
+    @Query("SELECT p FROM PagoEntity p WHERE p.reserva.id = :reservaId AND p.estado = :estado AND p.factura IS NULL")
     Optional<PagoEntity> findByReservaIdAndEstado(UUID reservaId, PagoEstado estado);
 
     @Query("SELECT p FROM PagoEntity p WHERE p.pagoOriginal.id = :pagoOriginalId")
     List<PagoEntity> findByPagoOriginalId(UUID pagoOriginalId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM PagoEntity p WHERE p.reserva.id = :reservaId AND p.estado = :estado")
+    @Query("SELECT p FROM PagoEntity p WHERE p.reserva.id = :reservaId AND p.estado = :estado AND p.factura IS NULL")
     Optional<PagoEntity> findCompletadoByReservaIdForUpdate(UUID reservaId, PagoEstado estado);
 
     @Query("SELECT COALESCE(SUM(p.monto), 0) FROM PagoEntity p WHERE p.pagoOriginal.id = :pagoOriginalId AND p.estado = :estado")
@@ -36,15 +36,20 @@ public interface SpringDataPagoRepository extends JpaRepository<PagoEntity, UUID
         return sumMontoByPagoOriginalIdAndEstado(pagoOriginalId, PagoEstado.REEMBOLSADO);
     }
 
-    boolean existsByReservaIdAndEstado(UUID reservaId, PagoEstado estado);
+    @Query("SELECT COUNT(p) > 0 FROM PagoEntity p WHERE p.reserva.id = :reservaId AND p.estado = 'COMPLETADO' AND p.factura IS NULL")
+    boolean existsCompletadoByReservaId(UUID reservaId);
 
-    default boolean existsCompletadoByReservaId(UUID reservaId) {
-        return existsByReservaIdAndEstado(reservaId, PagoEstado.COMPLETADO);
-    }
+    boolean existsByReservaIdAndEstado(UUID reservaId, PagoEstado estado);
 
     boolean existsByPagoOriginalIdAndEstado(UUID pagoOriginalId, PagoEstado estado);
 
     boolean existsByReservaId(UUID reservaId);
+
+    boolean existsByFacturaIdAndEstado(UUID facturaId, PagoEstado estado);
+
+    Optional<PagoEntity> findByFacturaId(UUID facturaId);
+
+    Optional<PagoEntity> findByFacturaIdAndEstado(UUID facturaId, PagoEstado estado);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM PagoEntity p WHERE p.id = :id")

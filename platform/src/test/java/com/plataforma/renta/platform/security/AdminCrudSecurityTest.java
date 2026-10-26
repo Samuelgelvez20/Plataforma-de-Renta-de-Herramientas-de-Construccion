@@ -11,7 +11,6 @@ import com.plataforma.renta.domain.port.out.PropietarioRepository;
 import com.plataforma.renta.domain.port.out.ReservaRepository;
 import com.plataforma.renta.domain.port.out.UsuarioRepository;
 import com.plataforma.renta.domain.value.Email;
-import com.plataforma.renta.domain.value.Nit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

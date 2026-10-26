@@ -20,7 +20,6 @@ public class AuthDtos {
             String rol,
             String telefono,
             String razonSocial,
-            String nit,
             String direccionFiscal,
             String direccionEntregaDefault
     ) {}
@@ -33,16 +32,15 @@ public class AuthDtos {
             String rol,
             String telefono,
             boolean activo,
-            String nit,
             String razonSocial,
             String direccion
     ) {
         public UserResponse(UUID id, String email, String nombre, String apellido, String rol, String telefono, boolean activo) {
-            this(id, email, nombre, apellido, rol, telefono, activo, null, null, null);
+            this(id, email, nombre, apellido, rol, telefono, activo, null, null);
         }
 
         public UserResponse(UUID id, String email, String nombre, String apellido, String rol, String telefono) {
-            this(id, email, nombre, apellido, rol, telefono, true, null, null, null);
+            this(id, email, nombre, apellido, rol, telefono, true, null, null);
         }
     }
 
@@ -54,7 +52,6 @@ public class AuthDtos {
             String rol,
             String telefono,
             boolean activo,
-            String nit,
             String razonSocial,
             String direccionFiscal,
             String direccionEntrega,
@@ -66,8 +63,7 @@ public class AuthDtos {
             @NotBlank(message = "El apellido es obligatorio") String apellido,
             String telefono,
             String direccion,
-            String razonSocial,
-            String nit
+            String razonSocial
     ) {}
 
     public record AdminCreateUserRequest(
@@ -78,7 +74,6 @@ public class AuthDtos {
             @NotBlank(message = "El rol es obligatorio") String rol,
             String telefono,
             String razonSocial,
-            String nit,
             String direccionFiscal,
             String direccionEntregaDefault
     ) {}

@@ -45,6 +45,7 @@ function AppContent() {
   const [paymentReservation, setPaymentReservation] = useState<Reservation | null>(null);
   const [showSwagger, setShowSwagger] = useState<boolean>(false);
   const [showAuth, setShowAuth] = useState<boolean>(false);
+  const [dashboardRefreshKey, setDashboardRefreshKey] = useState<number>(0);
 
   const handleBookTool = (tool: Tool) => {
     if (!user) {
@@ -114,6 +115,7 @@ function AppContent() {
 
         {currentView === 'client' && (
           <ClientDashboard
+            key={dashboardRefreshKey}
             onPayReservation={(resv) => setPaymentReservation(resv)}
             onViewInvoice={(invoiceId) => {}}
             onNavigateCatalog={() => handleGlobalNavigate('catalog')}
@@ -122,7 +124,7 @@ function AppContent() {
 
         {currentView === 'owner' && (
           user?.rol === 'PROPIETARIO' || user?.rol === 'ADMIN' ? (
-            <OwnerDashboard onNavigateCatalog={() => handleGlobalNavigate('catalog')} />
+            <OwnerDashboard key={dashboardRefreshKey} onNavigateCatalog={() => handleGlobalNavigate('catalog')} />
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-16 text-center">
               <div className="p-8 bg-white rounded-2xl border border-neutral-200 shadow-xs">
@@ -163,7 +165,10 @@ function AppContent() {
 
       <CheckoutPaymentModal
         reservation={paymentReservation}
-        onClose={() => setPaymentReservation(null)}
+        onClose={() => {
+          setPaymentReservation(null);
+          setDashboardRefreshKey(k => k + 1);
+        }}
         onPaymentSuccess={handlePaymentSuccess}
       />
 

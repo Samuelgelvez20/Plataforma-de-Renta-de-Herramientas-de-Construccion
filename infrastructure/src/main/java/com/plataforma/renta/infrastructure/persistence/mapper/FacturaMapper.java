@@ -27,13 +27,16 @@ public class FacturaMapper {
                 entity.getDatosReceptor(),
                 entity.getFechaEmision(),
                 entity.getCreadoEn(),
-                entity.getMoneda()
+                entity.getMoneda(),
+                entity.getEstado() != null ? entity.getEstado() : (entity.getTipo() == com.plataforma.renta.infrastructure.persistence.entity.FacturaTipo.REPARACION ? "PENDIENTE" : "PAGADA"),
+                entity.getDescripcionDano(),
+                entity.getPago() != null ? entity.getPago().getId() : null
         );
     }
 
     public FacturaEntity toEntity(Factura domain) {
         if (domain == null) return null;
-        return new FacturaEntity(
+        FacturaEntity entity = new FacturaEntity(
                 domain.getId(),
                 null,
                 domain.getNumeroFactura(),
@@ -51,6 +54,9 @@ public class FacturaMapper {
                 domain.getFechaEmision(),
                 domain.getCreadoEn()
         );
+        entity.setEstado(domain.getEstado());
+        entity.setDescripcionDano(domain.getDescripcionDano());
+        return entity;
     }
 
     private FacturaTipo toDomainTipo(com.plataforma.renta.infrastructure.persistence.entity.FacturaTipo tipo) {

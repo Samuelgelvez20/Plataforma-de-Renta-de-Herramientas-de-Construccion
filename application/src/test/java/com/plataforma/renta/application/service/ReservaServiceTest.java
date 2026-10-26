@@ -51,6 +51,8 @@ class ReservaServiceTest {
     private DisponibilidadRepository disponibilidadRepository;
     @Mock
     private PagoRepository pagoRepository;
+    @Mock
+    private FacturaService facturaService;
 
     private ReservaService reservaService;
 
@@ -62,7 +64,8 @@ class ReservaServiceTest {
                 advisoryLockService,
                 configuracionFiscalRepository,
                 disponibilidadRepository,
-                pagoRepository
+                pagoRepository,
+                facturaService
         );
     }
 

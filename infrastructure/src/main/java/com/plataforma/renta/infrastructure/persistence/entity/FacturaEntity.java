@@ -63,6 +63,16 @@ public class FacturaEntity {
     @Column(name = "fecha_emision", nullable = false)
     private Instant fechaEmision;
 
+    @Column(name = "estado", nullable = false, length = 30)
+    private String estado;
+
+    @Column(name = "descripcion_dano", columnDefinition = "TEXT")
+    private String descripcionDano;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pago_id")
+    private PagoEntity pago;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     private Instant creadoEn;
 
@@ -74,6 +84,19 @@ public class FacturaEntity {
                          BigDecimal total, String moneda, BigDecimal ivaPorcentaje,
                          Boolean ivaAplica, String datosEmisor, String datosReceptor,
                          Instant fechaEmision, Instant creadoEn) {
+        this(id, reserva, numeroFactura, tipo, facturaOriginal, pagoReembolso,
+             subtotal, iva, total, moneda, ivaPorcentaje, ivaAplica,
+             datosEmisor, datosReceptor, fechaEmision, creadoEn,
+             tipo == FacturaTipo.REPARACION ? "PENDIENTE" : "PAGADA", null, null);
+    }
+
+    public FacturaEntity(UUID id, ReservaEntity reserva, String numeroFactura,
+                         FacturaTipo tipo, FacturaEntity facturaOriginal,
+                         PagoEntity pagoReembolso, BigDecimal subtotal, BigDecimal iva,
+                         BigDecimal total, String moneda, BigDecimal ivaPorcentaje,
+                         Boolean ivaAplica, String datosEmisor, String datosReceptor,
+                         Instant fechaEmision, Instant creadoEn,
+                         String estado, String descripcionDano, PagoEntity pago) {
         this.id = id;
         this.reserva = reserva;
         this.numeroFactura = numeroFactura;
@@ -90,6 +113,9 @@ public class FacturaEntity {
         this.datosReceptor = datosReceptor;
         this.fechaEmision = fechaEmision;
         this.creadoEn = creadoEn;
+        this.estado = estado != null ? estado : (tipo == FacturaTipo.REPARACION ? "PENDIENTE" : "PAGADA");
+        this.descripcionDano = descripcionDano;
+        this.pago = pago;
     }
 
     @PrePersist
@@ -99,6 +125,7 @@ public class FacturaEntity {
         if (tipo == null) tipo = FacturaTipo.FACTURA;
         if (moneda == null) moneda = "COP";
         if (ivaAplica == null) ivaAplica = true;
+        if (estado == null) estado = (tipo == FacturaTipo.REPARACION) ? "PENDIENTE" : "PAGADA";
     }
 
     public UUID getId() { return id; }
@@ -117,6 +144,9 @@ public class FacturaEntity {
     public String getDatosReceptor() { return datosReceptor; }
     public Instant getFechaEmision() { return fechaEmision; }
     public Instant getCreadoEn() { return creadoEn; }
+    public String getEstado() { return estado; }
+    public String getDescripcionDano() { return descripcionDano; }
+    public PagoEntity getPago() { return pago; }
 
     public void setReserva(ReservaEntity reserva) { this.reserva = reserva; }
     public void setNumeroFactura(String numeroFactura) { this.numeroFactura = numeroFactura; }
@@ -132,4 +162,7 @@ public class FacturaEntity {
     public void setDatosEmisor(String datosEmisor) { this.datosEmisor = datosEmisor; }
     public void setDatosReceptor(String datosReceptor) { this.datosReceptor = datosReceptor; }
     public void setFechaEmision(Instant fechaEmision) { this.fechaEmision = fechaEmision; }
+    public void setEstado(String estado) { this.estado = estado; }
+    public void setDescripcionDano(String descripcionDano) { this.descripcionDano = descripcionDano; }
+    public void setPago(PagoEntity pago) { this.pago = pago; }
 }

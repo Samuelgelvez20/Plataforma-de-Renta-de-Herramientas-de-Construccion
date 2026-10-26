@@ -141,6 +141,60 @@ public class FacturaService {
         return facturaRepository.save(nota);
     }
 
+    @Transactional
+    public Factura emitirFacturaReparacion(Reserva reserva, Dinero costoReparacion, String descripcionDano) {
+        if (costoReparacion == null || costoReparacion.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("El costo de reparación debe ser mayor a cero");
+        }
+
+        // Idempotencia: si ya existe una factura de reparación para esta reserva, retornar la existente
+        Optional<Factura> existente = facturaRepository.findReparacionByReservaId(reserva.getId());
+        if (existente.isPresent()) {
+            return existente.get();
+        }
+
+        if (reserva.getDetalles() == null || reserva.getDetalles().isEmpty()) {
+            throw new IllegalStateException("La reserva no contiene detalles para emitir factura de reparación");
+        }
+        var herramientaId = reserva.getDetalles().get(0).getHerramientaId();
+        var herramienta = herramientaRepository.findById(herramientaId)
+                .orElseThrow(() -> new EntidadNoEncontradaException("Herramienta no encontrada: " + herramientaId));
+        var propietarioId = herramienta.getPropietarioId();
+
+        var propietario = propietarioRepository.findById(propietarioId)
+                .orElseThrow(() -> new EntidadNoEncontradaException("Propietario no encontrado: " + propietarioId));
+
+        var cliente = clienteRepository.findByUsuarioId(reserva.getClienteId())
+                .orElseThrow(() -> new EntidadNoEncontradaException("Cliente no encontrado"));
+
+        String numeroFactura = "REP-" + String.format("%06d", System.currentTimeMillis() % 1000000);
+        BigDecimal ivaPct = BigDecimal.ZERO;
+        boolean ivaAplica = false;
+
+        Dinero subtotal = costoReparacion;
+        Dinero iva = Dinero.cero();
+        Dinero total = costoReparacion;
+
+        Factura factura = Factura.reparacion(
+                reserva.getId(),
+                numeroFactura,
+                subtotal,
+                iva,
+                total,
+                ivaPct,
+                ivaAplica,
+                toJsonEmisor(propietario),
+                toJsonReceptor(cliente),
+                descripcionDano
+        );
+
+        return facturaRepository.save(factura);
+    }
+
+    public Optional<Factura> obtenerReparacionPorReservaId(UUID reservaId) {
+        return facturaRepository.findReparacionByReservaId(reservaId);
+    }
+
     private String generarNumeroFactura() {
         // En implementación real usar secuencia de BD
         return "F-" + String.format("%06d", System.currentTimeMillis() % 1000000);
@@ -148,7 +202,6 @@ public class FacturaService {
 
     private String toJsonEmisor(com.plataforma.renta.domain.model.Propietario p) {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("nit", p.getNit() != null ? p.getNit().getValor() : "");
         map.put("razon_social", p.getRazonSocial());
         map.put("direccion", p.getDireccionFiscal());
         map.put("regimen", p.getRegimen());

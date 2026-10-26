@@ -13,7 +13,7 @@ public class ClienteEntity implements Persistable<UUID> {
     @Column(name = "usuario_id", nullable = false)
     private UUID usuarioId;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.EAGER)
     @MapsId
     @JoinColumn(name = "usuario_id")
     private UsuarioEntity usuario;

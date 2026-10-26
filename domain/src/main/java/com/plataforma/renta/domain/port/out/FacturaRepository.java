@@ -23,5 +23,9 @@ public interface FacturaRepository {
 
     boolean existsByNumeroFactura(String numeroFactura);
 
+    Optional<Factura> findReparacionByReservaId(UUID reservaId);
+
+    boolean existsByReservaIdAndTipo(UUID reservaId, FacturaTipo tipo);
+
     List<Factura> findAll();
 }

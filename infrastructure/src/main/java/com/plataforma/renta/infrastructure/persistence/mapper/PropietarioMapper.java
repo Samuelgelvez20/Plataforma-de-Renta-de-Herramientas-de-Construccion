@@ -2,7 +2,6 @@ package com.plataforma.renta.infrastructure.persistence.mapper;
 
 import com.plataforma.renta.domain.model.Propietario;
 import com.plataforma.renta.domain.value.Email;
-import com.plataforma.renta.domain.value.Nit;
 import com.plataforma.renta.infrastructure.persistence.entity.PropietarioEntity;
 import com.plataforma.renta.infrastructure.persistence.entity.UsuarioEntity;
 import org.springframework.stereotype.Component;
@@ -19,7 +18,6 @@ public class PropietarioMapper {
         return new Propietario(
                 entity.getUsuarioId(),
                 u != null ? Email.of(u.getEmail()) : null,
-                Nit.of(entity.getNit()),
                 entity.getRazonSocial(),
                 entity.getDireccionFiscal(),
                 entity.getTelefonoContacto(),
@@ -35,7 +33,6 @@ public class PropietarioMapper {
         PropietarioEntity entity = new PropietarioEntity(
                 usuarioEntity,
                 domain.getRazonSocial(),
-                domain.getNit().getValor(),
                 domain.getDireccionFiscal(),
                 domain.getTelefonoContacto(),
                 domain.getRegimen(),

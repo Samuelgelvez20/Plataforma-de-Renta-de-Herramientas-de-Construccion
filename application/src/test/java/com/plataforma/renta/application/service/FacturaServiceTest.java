@@ -6,7 +6,6 @@ import com.plataforma.renta.domain.model.*;
 import com.plataforma.renta.domain.port.out.*;
 import com.plataforma.renta.domain.value.Dinero;
 import com.plataforma.renta.domain.value.Email;
-import com.plataforma.renta.domain.value.Nit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -121,7 +120,7 @@ class FacturaServiceTest {
         );
 
         Propietario propietario = new Propietario(
-                propietarioId, Email.of("propietario@construccion.com"), Nit.of("900123450-4"),
+                propietarioId, Email.of("propietario@construccion.com"),
                 "Equipos del Norte SAS", "Cra 10 # 20-30", "3101234567", "COMUN", "Bogota", "Cundinamarca", Instant.now()
         );
 
@@ -145,7 +144,6 @@ class FacturaServiceTest {
 
         // Validar JSON del emisor con Jackson
         JsonNode emisorNode = objectMapper.readTree(factura.getDatosEmisor());
-        assertThat(emisorNode.get("nit").asText()).isEqualTo("900123450-4");
         assertThat(emisorNode.get("razon_social").asText()).isEqualTo("Equipos del Norte SAS");
 
         // Validar JSON del receptor con Jackson
@@ -191,7 +189,7 @@ class FacturaServiceTest {
         String razonSocialEspecial = "Ferretería & Construcciones \"El Roble\" S.A.S.";
         String direccionEspecial = "Av. Calle 26 # 68D-35\nPiso 4, Of. 401 \\ Sector \"A\"";
         Propietario propietario = new Propietario(
-                propietarioId, Email.of("contacto@elroble.com.co"), Nit.of("900123456-8"),
+                propietarioId, Email.of("contacto@elroble.com.co"),
                 razonSocialEspecial, direccionEspecial, "3157778899", "Régimen Ordinario", "Bogotá, D.C.", "Cundinamarca", Instant.now()
         );
 
@@ -257,7 +255,7 @@ class FacturaServiceTest {
         );
 
         Propietario propietario = new Propietario(
-                propietarioId, Email.of("contacto@alquileres.com"), Nit.of("123456789-6"),
+                propietarioId, Email.of("contacto@alquileres.com"),
                 "Alquileres SAS", "Calle 1", "3001234567", "COMUN", "Medellin", "Antioquia", Instant.now()
         );
 
@@ -414,4 +412,79 @@ class FacturaServiceTest {
         assertThat(permitido).isTrue();
     }
 
+    @Test
+    @DisplayName("emitirFacturaReparacion crea factura pendiente con descripcion del dano")
+    void emitirFacturaReparacionCreaFacturaPendiente() {
+        UUID reservaId = UUID.randomUUID();
+        UUID clienteId = UUID.randomUUID();
+        UUID herramientaId = UUID.randomUUID();
+        UUID propietarioId = UUID.randomUUID();
+
+        Reserva reserva = new Reserva(
+                reservaId, clienteId, ReservaEstado.FINALIZADA,
+                LocalDate.now(), LocalDate.now().plusDays(1),
+                Instant.now(), null
+        );
+        reserva.agregarDetalle(DetalleReserva.crear(
+                reservaId, herramientaId, 1,
+                Dinero.cop(new BigDecimal("50000")),
+                LocalDate.now(), LocalDate.now().plusDays(1),
+                new BigDecimal("19.00"), true
+        ));
+
+        Herramienta herramienta = new Herramienta(
+                herramientaId, UUID.randomUUID(), propietarioId,
+                "Taladro Percutor", "Desc", "Bosch", "GSB-13",
+                Dinero.cop(new BigDecimal("50000")), 5,
+                HerramientaPubEstado.PUBLICADA, new BigDecimal("19.00"), true,
+                Instant.now(), Instant.now()
+        );
+
+        Propietario propietario = new Propietario(
+                propietarioId, Email.of("propietario@construccion.com"),
+                "Equipos del Norte SAS", "Cra 10 # 20-30", "3101234567", "COMUN", "Bogota", "Cundinamarca", Instant.now()
+        );
+
+        Cliente cliente = new Cliente(
+                clienteId, Email.of("cliente@empresa.com"), "Carlos", "Gómez", "3009876543",
+                "Calle 100 # 15-20", "{}"
+        );
+
+        Dinero costo = Dinero.cop(BigDecimal.valueOf(100000));
+        String descripcion = "Motor quemado por sobrecarga";
+
+        when(facturaRepository.findReparacionByReservaId(reservaId)).thenReturn(Optional.empty());
+        when(herramientaRepository.findById(herramientaId)).thenReturn(Optional.of(herramienta));
+        when(propietarioRepository.findById(propietarioId)).thenReturn(Optional.of(propietario));
+        when(clienteRepository.findByUsuarioId(clienteId)).thenReturn(Optional.of(cliente));
+        when(facturaRepository.save(any(Factura.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Factura factura = facturaService.emitirFacturaReparacion(reserva, costo, descripcion);
+
+        assertThat(factura).isNotNull();
+        assertThat(factura.getTipo()).isEqualTo(FacturaTipo.REPARACION);
+        assertThat(factura.getEstado()).isEqualTo("PENDIENTE");
+        assertThat(factura.getDescripcionDano()).isEqualTo(descripcion);
+        assertThat(factura.getSubtotal().getMonto()).isEqualByComparingTo(BigDecimal.valueOf(100000));
+        assertThat(factura.getTotal().getMonto()).isEqualByComparingTo(BigDecimal.valueOf(100000));
+        assertThat(factura.getNumeroFactura()).startsWith("REP-");
+    }
+
+    @Test
+    @DisplayName("emitirFacturaReparacion es idempotente y retorna factura existente sin duplicar")
+    void emitirFacturaReparacionEsIdempotente() {
+        UUID reservaId = UUID.randomUUID();
+        UUID clienteId = UUID.randomUUID();
+        Reserva reserva = new Reserva(reservaId, clienteId, ReservaEstado.FINALIZADA, LocalDate.now(), LocalDate.now().plusDays(1), Instant.now(), null);
+        Dinero costo = Dinero.cop(BigDecimal.valueOf(100000));
+        String descripcion = "Motor quemado por sobrecarga";
+
+        Factura existente = Factura.reparacion(reservaId, "REP-EXISTENTE", costo, Dinero.cero(), costo, BigDecimal.ZERO, false, descripcion, "{}", "{}");
+        when(facturaRepository.findReparacionByReservaId(reservaId)).thenReturn(Optional.of(existente));
+
+        Factura resultado = facturaService.emitirFacturaReparacion(reserva, costo, descripcion);
+
+        assertThat(resultado).isSameAs(existente);
+        verify(facturaRepository, never()).save(any(Factura.class));
+    }
 }

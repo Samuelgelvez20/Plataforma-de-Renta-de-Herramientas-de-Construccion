@@ -85,7 +85,7 @@ class AuthControllerTest {
                 "User",
                 "ADMIN",
                 "3001234567",
-                null, null, null, null
+                null, null, null
         );
 
         assertThatThrownBy(() -> authController.register(request))
@@ -105,7 +105,7 @@ class AuthControllerTest {
                 "Test",
                 "CLIENTE",
                 "3001234567",
-                null, null, null, null
+                null, null, null
         );
 
         Usuario usuario = new Usuario(
@@ -146,7 +146,6 @@ class AuthControllerTest {
                 "PROPIETARIO",
                 "3109876543",
                 "Maquinaria SAS",
-                "900123450-4",
                 "Calle 123",
                 null
         );
@@ -175,7 +174,6 @@ class AuthControllerTest {
         verify(authService).register(cmdCaptor.capture());
         assertThat(cmdCaptor.getValue().rol()).isEqualTo(UserRol.PROPIETARIO);
         assertThat(cmdCaptor.getValue().razonSocial()).isEqualTo("Maquinaria SAS");
-        assertThat(cmdCaptor.getValue().nit()).isEqualTo("900123450-4");
     }
 
     @Test
@@ -188,7 +186,7 @@ class AuthControllerTest {
                 "User",
                 "SUPER_USER",
                 "3001234567",
-                null, null, null, null
+                null, null, null
         );
 
         assertThatThrownBy(() -> authController.register(request))
@@ -223,5 +221,12 @@ class AuthControllerTest {
         assertThat(response.getBody().nombre()).isEqualTo("Ana");
         assertThat(response.getBody().apellido()).isEqualTo("Gomez");
         assertThat(response.getBody().rol()).isEqualTo("CLIENTE");
+    }
+
+    @Test
+    @DisplayName("me sin autenticacion retorna 401 UNAUTHORIZED")
+    void me_sinAutenticacion_retorna401() {
+        ResponseEntity<UserResponse> response = authController.me(null);
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
     }
 }

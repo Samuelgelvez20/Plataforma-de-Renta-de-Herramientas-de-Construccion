@@ -104,6 +104,11 @@ export interface Invoice {
   total: number;
   fechaEmision: string;
   lineas: InvoiceDetail[];
+  tipo?: string;
+  estado?: string;
+  descripcionDano?: string;
+  herramientaNombre?: string;
+  concepto?: string;
 }
 
 export interface RefundRequest {
@@ -163,4 +168,72 @@ export interface DashboardMetrics {
     mes: string;
     ingresos: number;
   }>;
+}
+
+export interface AdminReservation {
+  id: string;
+  codigoReserva: string;
+  clienteId: string;
+  clienteNombre: string;
+  clienteEmail: string;
+  propietarioId?: string;
+  propietarioNombre?: string;
+  propietarioRazonSocial?: string;
+  herramientaId?: string;
+  herramientaNombre?: string;
+  estado: string;
+  fechaInicio: string;
+  fechaFin: string;
+  subtotal: number;
+  iva: number;
+  total: number;
+  pagada: boolean;
+  solicitudDevolucion?: boolean;
+  estadoDevolucion?: string;
+  presentaDanos: boolean;
+  descripcionDano?: string;
+  costoReparacion: number;
+  facturaReparacionId?: string;
+  facturaReparacionNumero?: string;
+  facturaReparacionEstado?: string;
+  fechaCreacion?: string;
+}
+
+export interface AdminInvoice {
+  id: string;
+  reservaId?: string;
+  codigoReserva?: string;
+  numeroFactura: string;
+  tipo: string;
+  subtotal: number;
+  iva: number;
+  total: number;
+  moneda: string;
+  estado: string;
+  herramientaNombre: string;
+  clienteNombre: string;
+  propietarioNombre: string;
+  descripcionDano?: string;
+  concepto: string;
+  pagoId?: string;
+  fechaEmision: string;
+}
+
+export interface AdminPayment {
+  id: string;
+  reservaId?: string;
+  codigoReserva?: string;
+  facturaId?: string;
+  numeroFactura?: string;
+  tipo: 'ALQUILER' | 'REPARACION' | 'REEMBOLSO';
+  monto: number;
+  moneda: string;
+  estado: string;
+  proveedorPago: string;
+  transaccionId: string;
+  motivo?: string;
+  herramientaNombre: string;
+  clienteNombre: string;
+  fechaPago?: string;
+  creadoEn: string;
 }

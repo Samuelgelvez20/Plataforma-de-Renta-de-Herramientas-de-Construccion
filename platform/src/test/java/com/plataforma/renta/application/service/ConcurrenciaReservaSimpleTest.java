@@ -50,12 +50,6 @@ class ConcurrenciaReservaSimpleTest {
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
-    private static final java.util.concurrent.atomic.AtomicInteger nitCounter = new java.util.concurrent.atomic.AtomicInteger(0);
-    private static final String[] VALID_NITS = {
-        "900123450-4", "900123451-1", "900123452-9", "900123453-6",
-        "900123454-3", "900123455-0", "900123456-8", "900123457-5",
-        "900123458-2", "900123459-1"
-    };
 
     @BeforeAll
     static void migrate() {
@@ -104,13 +98,12 @@ class ConcurrenciaReservaSimpleTest {
         String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
         String propietarioEmail = "propietario-" + uniqueSuffix + "@test.com";
         
-        String nit = VALID_NITS[nitCounter.getAndIncrement() % VALID_NITS.length];
         String categoriaNombre = "Taladros-" + uniqueSuffix;
         
         jdbcTemplate.update("INSERT INTO usuario (id, email, password_hash, rol, nombre, apellido, creado_en, actualizado_en) VALUES (?, ?, ?, ?::user_rol, ?, ?, now(), now())",
                 propietarioId, propietarioEmail, "hash", "PROPIETARIO", "Test", "Propietario");
-        jdbcTemplate.update("INSERT INTO propietario (usuario_id, razon_social, nit, direccion_fiscal, telefono_contacto, regimen, municipio, departamento) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                propietarioId, "Test Propietario", nit, "Dirección fiscal test", "3001234567", "COMUN", "Bogotá", "Cundinamarca");
+        jdbcTemplate.update("INSERT INTO propietario (usuario_id, razon_social, direccion_fiscal, telefono_contacto, regimen, municipio, departamento) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                propietarioId, "Test Propietario", "Dirección fiscal test", "3001234567", "COMUN", "Bogotá", "Cundinamarca");
         jdbcTemplate.update("INSERT INTO categoria (id, nombre, descripcion, creado_en) VALUES (?, ?, ?, now())",
                 categoriaId, "Taladros-" + uniqueSuffix, "Taladros de prueba");
     }

@@ -27,5 +27,11 @@ public interface SpringDataFacturaRepository extends JpaRepository<FacturaEntity
     @Query("SELECT f FROM FacturaEntity f WHERE f.pagoReembolso.id = :pagoReembolsoId")
     Optional<FacturaEntity> findByPagoReembolsoId(UUID pagoReembolsoId);
 
+    @Query("SELECT f FROM FacturaEntity f WHERE f.reserva.id = :reservaId AND f.tipo = 'REPARACION'")
+    Optional<FacturaEntity> findReparacionByReservaId(UUID reservaId);
+
+    @Query("SELECT COUNT(f) > 0 FROM FacturaEntity f WHERE f.reserva.id = :reservaId AND f.tipo = :tipo")
+    boolean existsByReservaIdAndTipo(UUID reservaId, FacturaTipo tipo);
+
     boolean existsByNumeroFactura(String numeroFactura);
 }
